@@ -24,6 +24,7 @@ window.Tabla = (function () {
     Utils.porId('filtro-tecnico').addEventListener('change', aplicarFiltros);
     Utils.porId('filtro-q').addEventListener('input', Utils.debounce(aplicarFiltros, 400));
     Utils.porId('btn-limpiar').addEventListener('click', limpiarFiltros);
+    Utils.porId('btn-exportar').addEventListener('click', exportarCsv);
     Utils.porId('btn-prev').addEventListener('click', function () {
       if (estado.pagina > 1) {
         estado.pagina -= 1;
@@ -80,7 +81,6 @@ window.Tabla = (function () {
       page: estado.pagina,
       per_page: estado.porPagina,
     };
-
     return Api.listarTickets(parametros).then(function (respuesta) {
       estado.total = respuesta.meta.total;
       estado.pagina = respuesta.meta.page;
@@ -122,6 +122,28 @@ window.Tabla = (function () {
       ]);
       cuerpo.append(fila);
     });
+  }
+
+  /**
+   * Descarga un CSV con los tickets que cumplen los filtros activos (no la
+   * página actual). El blob se genera con el encabezado X-API-Key que envía
+   * Api.exportarCsv; el enlace temporal solo materializa la descarga.
+   */
+  function exportarCsv() {
+    Api.exportarCsv({
+      estado: estado.filtros.estado,
+      prioridad: estado.filtros.prioridad,
+      tecnico: estado.filtros.tecnico,
+      q: estado.filtros.q,
+    }).then(function (resultado) {
+      var url = URL.createObjectURL(resultado.blob);
+      var enlace = h('a', { href: url, download: resultado.nombre });
+      document.body.append(enlace);
+      enlace.click();
+      enlace.remove();
+      URL.revokeObjectURL(url);
+      Ui.avisar('Exportación CSV generada.', 'ok');
+    }).catch(Ui.avisarError);
   }
 
   function actualizarPaginacion() {

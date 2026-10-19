@@ -10,6 +10,14 @@ namespace App\Http;
  */
 final class Response
 {
+    /** @var array<string, string> Encabezados adicionales (ej. Allow, Content-Disposition). */
+    private array $encabezados;
+
+    /** Cuerpo no-JSON (ej. CSV). Si es null se serializa $datos como JSON. */
+    private ?string $cuerpoCrudo = null;
+
+    private string $tipoContenido = 'application/json; charset=utf-8';
+
     /**
      * @param array<string, mixed>  $datos      Cuerpo JSON de la respuesta.
      * @param array<string, string> $encabezados Encabezados adicionales (ej. Allow).
@@ -17,14 +25,29 @@ final class Response
     private function __construct(
         private readonly int $estado,
         private readonly array $datos,
-        private readonly array $encabezados = [],
+        array $encabezados = [],
     ) {
+        $this->encabezados = $encabezados;
     }
 
     /** @param array<string, mixed> $datos */
     public static function json(array $datos, int $estado = 200): self
     {
         return new self($estado, $datos);
+    }
+
+    /**
+     * Respuesta cruda (no JSON) para descargas, ej. exportación CSV (§7).
+     * Fuerza el tipo MIME y un nombre de archivo seguro.
+     */
+    public static function descarga(string $cuerpo, string $tipoContenido, string $nombreArchivo): self
+    {
+        $respuesta = new self(200, []);
+        $respuesta->cuerpoCrudo = $cuerpo;
+        $respuesta->tipoContenido = $tipoContenido;
+        $respuesta->encabezados['Content-Disposition'] = 'attachment; filename="' . $nombreArchivo . '"';
+
+        return $respuesta;
     }
 
     /**
@@ -71,17 +94,24 @@ final class Response
      */
     public function enviar(): void
     {
+        http_response_code($this->estado);
+        header('Content-Type: ' . $this->tipoContenido);
+        header('X-Content-Type-Options: nosniff');
+        foreach ($this->encabezados as $nombre => $valor) {
+            header("{$nombre}: {$valor}");
+        }
+
+        if ($this->cuerpoCrudo !== null) {
+            echo $this->cuerpoCrudo;
+
+            return;
+        }
+
         $cuerpo = json_encode(
             $this->datos,
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
         );
 
-        http_response_code($this->estado);
-        header('Content-Type: application/json; charset=utf-8');
-        header('X-Content-Type-Options: nosniff');
-        foreach ($this->encabezados as $nombre => $valor) {
-            header("{$nombre}: {$valor}");
-        }
         echo $cuerpo;
     }
 }

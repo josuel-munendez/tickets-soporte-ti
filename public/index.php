@@ -130,6 +130,7 @@ try {
     $router->agregar('GET', '/api/ping', static fn (): Response => Response::json(['status' => 'ok']));
 
     $router->agregar('GET', '/api/tickets', [$ticketController, 'listar']);
+    $router->agregar('GET', '/api/tickets/export.csv', [$ticketController, 'exportarCsv']);
     $router->agregar('POST', '/api/tickets', [$ticketController, 'crear']);
     $router->agregar('GET', '/api/tickets/{numero}', [$ticketController, 'detalle']);
     $router->agregar('PATCH', '/api/tickets/{numero}/estado', [$ticketController, 'cambiarEstado']);

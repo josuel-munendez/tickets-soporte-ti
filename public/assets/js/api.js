@@ -124,5 +124,33 @@ window.Api = (function () {
     reasignarTecnico: function (numero, datos) {
       return pedir('PATCH', '/tickets/' + encodeURIComponent(numero) + '/tecnico', datos);
     },
+    /**
+     * Descarga el CSV de los tickets filtrados. Se hace con fetch (no con un
+     * enlace directo) porque un <a href> NO envía el encabezado X-API-Key.
+     * Devuelve un Blob y el nombre de archivo sugerido por el servidor.
+     */
+    exportarCsv: function (parametros) {
+      asegurarClave();
+
+      return fetch(BASE + conQuery('/tickets/export.csv', parametros), {
+        headers: { 'X-API-Key': clave, 'Accept': 'text/csv' },
+      }).then(function (respuesta) {
+        if (!respuesta.ok) {
+          return respuesta.json().catch(function () { return null; }).then(function (datos) {
+            throw extraerError(respuesta, datos);
+          });
+        }
+        var nombre = 'tickets.csv';
+        var disposicion = respuesta.headers.get('Content-Disposition') || '';
+        var coincidencia = disposicion.match(/filename="?([^"]+)"?/);
+        if (coincidencia) {
+          nombre = coincidencia[1];
+        }
+
+        return respuesta.blob().then(function (blob) {
+          return { blob: blob, nombre: nombre };
+        });
+      });
+    },
   };
 })();

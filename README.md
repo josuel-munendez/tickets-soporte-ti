@@ -81,6 +81,7 @@ Base URL: `/api`. **Todos** exigen el encabezado `X-API-Key`.
 | `GET` | `/api/usuarios/{codigo}` | Datos del solicitante por código. | `200` | `401`, `404` |
 | `GET` | `/api/tecnicos` | Técnicos activos con su carga actual. | `200` | `401` |
 | `GET` | `/api/resumen` | Métricas del tablero. | `200` | `401` |
+| `GET` | `/api/tickets/export.csv` | Exporta a CSV los tickets filtrados (mismos filtros que la lista). | `200` | `401`, `422` |
 | `GET` | `/api/categorias` | Catálogo de categorías. | `200` | `401` |
 
 **Formato único de error** (sin excepciones, incluso 404/405/500):
@@ -151,6 +152,12 @@ curl -s -H "X-API-Key: $MI_CLAVE" "$BASE/usuarios/U001"
 curl -s -H "X-API-Key: $MI_CLAVE" "$BASE/tecnicos"
 curl -s -H "X-API-Key: $MI_CLAVE" "$BASE/categorias"
 curl -s -H "X-API-Key: $MI_CLAVE" "$BASE/resumen"
+```
+
+### Exportar a CSV (respeta los filtros)
+```bash
+curl -s -H "X-API-Key: $MI_CLAVE" \
+  "$BASE/tickets/export.csv?estado=EN%20CURSO&prioridad=Alta" -o tickets.csv
 ```
 
 ---
@@ -242,7 +249,27 @@ Ambos incluyen los 9 endpoints y los casos de error (401, 404, 409, 422).
 
 ---
 
-## 10. Calidad y barreras automáticas
+## 10. Pruebas automatizadas (PHPUnit)
+
+```bash
+composer install          # instala PHPUnit (dependencia de desarrollo)
+./vendor/bin/phpunit      # o: composer test
+```
+
+La suite tiene dos grupos:
+
+- **`Unit`** (dominio puro, sin base de datos): máquina de estados (RN-06), SLA (RN-08),
+  tope de carga (RN-05) y el generador CSV.
+- **`Integration`** (contra MySQL con `config/config.php`): flujo completo ABIERTO→EN CURSO→CERRADO
+  con historial, 409 al saltar de estado, 422 al cerrar sin solución, 422 con usuario inactivo y
+  verificación de que el **tope no quema el consecutivo** (ROLLBACK). Si no hay BD, este grupo se
+  **omite** en vez de fallar.
+
+Las pruebas de integración crean sus propios datos y los eliminan al terminar (no ensucian el `seed`).
+
+---
+
+## 11. Calidad y barreras automáticas
 
 ```bash
 bash scripts/guards.sh
@@ -254,7 +281,7 @@ si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO
 
 ---
 
-## 11. Declaración de uso de IA
+## 12. Declaración de uso de IA
 
 > Este proyecto se desarrolló con apoyo de herramientas de IA (OpenCode, GitHub Copilot y
 > asistentes de chat) para generar y revisar código y documentación, siguiendo una metodología
@@ -263,6 +290,6 @@ si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO
 
 ---
 
-## 12. Autor
+## 13. Autor
 
 Prueba técnica — Aprendiz de Soporte TI, **MEGACOMERCIAL SAS**. Zona horaria: `America/Bogota`.
