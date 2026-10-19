@@ -38,9 +38,10 @@ Arquitectura en Capas (Layered / Clean Architecture) con estricta separación de
 ├── AGENTS.md                   # Este archivo
 ├── README.md                   # Documentación principal y declaración de uso de IA
 ├── composer.json               # Autoload PSR-4 y dependencias dev
-├── CONTEXT/
-│   ├── postulacion_aprendiz_IT.txt # Job description for an IT Apprentice at MEGACOMERCIAL SAS. Gives context on the business environment.
-│   ├── Prueba_Tecnica practicante_TI.md # The actual technical test requirements and task explanation. Defines the MVP, exact API endpoints, database requirements, deliverables, and evaluation criteria.
+├── docs/
+│   ├── contexto/               # Job description y enunciado de la prueba (PDF/MD/TXT)
+│   ├── prompts-ia/             # Prompts de trabajo usados con el agente
+│   └── herramientas-ia/        # Configuración de herramientas de IA (opencode.json)
 ├── config/
 │   ├── config.example.php      # Plantilla versionada (sin secretos)
 │   └── config.php              # Credenciales reales (NO versionado, .gitignore)
