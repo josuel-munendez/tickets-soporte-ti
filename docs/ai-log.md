@@ -254,3 +254,29 @@ y dejar Docker para el final de la fase.
 - `GET /api/tickets/export.csv?prioridad=Alta` → `200 text/csv`, `Content-Disposition: attachment`,
   8 filas + encabezado; sin clave → `401` JSON.
 - `scripts/guards.sh` → TODO OK. BD restaurada con `seed.sql` tras las pruebas.
+
+## 2026-10-19 — Fase 8 (parte 2): Docker
+
+**Qué se pidió (usuario):** Terminar la Fase 8 con Docker (se dejó para el final, como se acordó).
+
+**Qué se generó (agente):**
+- `Dockerfile`: imagen `php:8.1-apache` con `pdo_mysql`, docroot en `public/`, `AllowOverride All`
+  para el `.htaccess`, ini con `date.timezone = America/Bogota` y `display_errors = 0`, y `composer install --no-dev`.
+- `docker-compose.yml`: servicios `app` (Apache+PHP) y `db` (`mysql:8.0`), con `schema.sql` y `seed.sql`
+  montados como scripts de initdb, `healthcheck` de MySQL y volúmenes para datos y logs.
+- `docker/entrypoint.sh`: genera `config/config.php` desde variables de entorno (el secreto no se versiona)
+  y espera a que MySQL acepte conexiones antes de arrancar Apache.
+- `.env.example` (plantilla versionada) y `.dockerignore` (no copia `vendor/`, `config/config.php`, `.env`, tests).
+- `public/.htaccess`: reescribe todo al Front Controller para Apache (el servidor embebido no lo necesitaba).
+- `public/index.php`: la inyección de la API key en la SPA ahora aplica también bajo Apache (antes solo `cli-server`).
+- `README.md`: sección de instalación con Docker y estructura del proyecto actualizada.
+
+**Decisión relevante:** el nombre de los contenedores chocaba con el MySQL de desarrollo local
+(`tickets-db`); el compose es autocontenido y se validó levantándolo en otro puerto (`APP_PUERTO`).
+
+**Verificación (docker compose up --build en el puerto 8090):**
+- `GET /api/ping` con clave → `{"status":"ok"}`; sin clave → `401`.
+- SPA servida con la API key inyectada (`apiKey: "cambia-esta-clave-de-api"`).
+- `GET /api/tickets` → lista con datos del seed; `GET /api/tickets/export.csv?prioridad=Alta` → `text/csv`.
+- Transición inválida ABIERTO→CERRADO → `409`. Assets estáticos servidos por Apache (`api.js` → `text/javascript`).
+- Al terminar: `docker compose down -v` y se restauró el contenedor de desarrollo. Guards: TODO OK.

@@ -59,6 +59,21 @@ php -S localhost:8080 -t public public/index.php
 
 Abre **http://localhost:8080/** para la SPA y **http://localhost:8080/api/ping** para la API.
 
+### Alternativa con Docker (opcional, +10 pts)
+
+```bash
+cp .env.example .env          # ajusta credenciales y API_KEY (el .env NO se versiona)
+docker compose up --build     # levanta MySQL 8.0 + PHP 8.1/Apache
+```
+
+La app queda en **http://localhost:8080/** (cambia `APP_PUERTO` en `.env` para otro puerto).
+MySQL ejecuta `database/schema.sql` y `database/seed.sql` automáticamente la primera vez que se crea
+el volumen de datos. El archivo `config/config.php` lo genera `docker/entrypoint.sh` desde las variables
+de entorno, así que ningún secreto se versiona. Para reiniciar de cero: `docker compose down -v`.
+
+> Con Apache, el enrutamiento al Front Controller lo hace `public/.htaccess` (mod_rewrite); en el
+> servidor embebido de PHP lo hace el propio `public/index.php`.
+
 ### Datos de prueba (`seed.sql`)
 - **10 usuarios** (`U001`…`U010`); `U010` está **inactivo** (para probar el rechazo).
 - **4 técnicos** (1 = Carlos Ramírez, 2 = Laura Gómez, 3 = Andrés Pérez; el 4, Marta Díaz, está **inactivo**).
@@ -217,18 +232,22 @@ Ambos incluyen los 9 endpoints y los casos de error (401, 404, 409, 422).
 ├── composer.json          # Autoload PSR-4 (App\ => src/) y PHPUnit
 ├── config/                # config.example.php (plantilla) / config.php (real, ignorado por Git)
 ├── database/              # schema.sql + seed.sql
-├── public/                # ÚNICA carpeta pública: index.php (front controller), app.html (SPA), assets/
+├── public/                # ÚNICA carpeta pública: index.php (front controller), app.html (SPA), .htaccess, assets/
 ├── src/
 │   ├── Controllers/       # HTTP delgado (lee Request, llama Service, responde JSON)
 │   ├── Services/          # Reglas de negocio y transacciones
 │   ├── Repositories/      # ÚNICO lugar con SQL (PDO preparado)
-│   ├── Domain/            # Clases puras: SlaCalculator, EstadoTicket, Constantes
+│   ├── Domain/            # Clases puras: SlaCalculator, EstadoTicket, Constantes, CsvExporter
 │   ├── Http/              # Router, Request, Response, Middlewares
 │   ├── Exceptions/        # Excepciones de dominio con código HTTP
 │   └── Support/           # Config, Database (PDO + transaction())
 ├── specs/                 # Spec-Driven Development (spec/plan/tasks por funcionalidad)
-├── tests/                 # Pruebas PHPUnit
-└── scripts/               # guards.sh (barreras automáticas)
+├── tests/                 # PHPUnit: Unit (dominio puro) e Integration (BD real)
+├── scripts/               # guards.sh (barreras automáticas)
+├── docker/                # entrypoint.sh (genera config.php desde el entorno)
+├── Dockerfile             # Imagen PHP 8.1 + Apache con el docroot en public/
+├── docker-compose.yml     # app + MySQL 8.0 (schema/seed como initdb)
+└── .env.example           # Plantilla de variables de entorno para Docker (sin secretos)
 ```
 
 ---

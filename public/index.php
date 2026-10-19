@@ -91,15 +91,14 @@ try {
     Config::cargar($raiz . '/config/config.php');
 
     // SPA (§7): se sirve app.html inyectando la API key desde config (secreto NO versionado).
-    // Si se abre app.html como archivo estático (Apache/nginx), el marcador queda y la SPA
-    // pide la clave por pantalla (ver assets/js/api.js).
-    if (PHP_SAPI === 'cli-server') {
-        $rutaSolicitada = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-        if ($rutaSolicitada === '/' || $rutaSolicitada === '/app.html') {
-            $plantilla = file_get_contents(__DIR__ . '/app.html');
-            echo str_replace('__CLAVE_API__', htmlspecialchars(Config::apiKey(), ENT_QUOTES), (string) $plantilla);
-            return;
-        }
+    // Si se abre app.html como archivo estático (sin pasar por aquí), el marcador queda y la
+    // SPA pide la clave por pantalla (ver assets/js/api.js). Aplica con el servidor embebido
+    // (cli-server) y con Apache (mod_rewrite envía todo a este Front Controller).
+    $rutaSolicitada = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+    if ($rutaSolicitada === '/' || $rutaSolicitada === '/app.html') {
+        $plantilla = file_get_contents(__DIR__ . '/app.html');
+        echo str_replace('__CLAVE_API__', htmlspecialchars(Config::apiKey(), ENT_QUOTES), (string) $plantilla);
+        return;
     }
 
     // Inyección manual de dependencias (§10 D): PDO → Repos → Services → Controllers.

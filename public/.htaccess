@@ -1,0 +1,18 @@
+# Enrutamiento con Apache: todo lo que no sea un archivo/directorio real
+# se envía al Front Controller (public/index.php), que decide SPA o API (§3).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # No reescribir archivos ni directorios existentes (assets, app.html...).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Todo lo demás va al Front Controller.
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Ninguna respuesta debe olvidar el tipo de contenido declarado (§4.7).
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

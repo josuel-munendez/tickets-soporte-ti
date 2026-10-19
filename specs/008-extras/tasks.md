@@ -6,5 +6,5 @@
 - [x] T4. `CsvExporter` (RFC 4180 + neutralización de fórmulas) y su test unitario.
 - [x] T5. Exportación CSV: repositorio + servicio + `Response::descarga()` + ruta + botón en la SPA.
 - [x] T6. Guards en verde y `docs/ai-log.md` (parte 1).
-- [ ] T7. `Dockerfile` + `docker-compose.yml` + `.env.example` + `.dockerignore` e instrucciones en README.
-- [ ] T8. Verificación `docker compose up`, guards y `docs/ai-log.md` (parte 2).
+- [x] T7. `Dockerfile` + `docker-compose.yml` + `.env.example` + `.dockerignore` e instrucciones en README.
+- [x] T8. Verificación `docker compose up`, guards y `docs/ai-log.md` (parte 2).

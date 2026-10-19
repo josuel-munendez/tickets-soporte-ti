@@ -1,0 +1,14 @@
+# No copiar a la imagen de la app:
+.git
+.gitignore
+.env
+config/config.php
+vendor/
+node_modules/
+.phpunit.cache/
+*.log
+storage/logs/
+tests/
+docs/
+specs/
+postman/
