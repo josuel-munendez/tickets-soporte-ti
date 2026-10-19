@@ -162,3 +162,35 @@ tope de carga y SLA — con commits por fase.
 `solucion` y `cerrado_en` guardados); reasignación a técnico con cupo → `200 REASIGNACION`; reasignar a un
 CERRADO → `409`; reasignar a técnico en el tope (5) → `409 TECNICO_AL_TOPE`; mismo técnico → `200` sin
 nuevo historial; `404` inexistente y `401` sin clave. Guards: TODO OK. BD restaurada con `seed.sql`.
+
+## 2026-10-19 — Fase 6: SPA (interfaz web)
+
+**Qué se pidió (usuario):** Implementar la Fase 6 — la SPA — como siguiente paso.
+
+**Qué se generó (agente):**
+- `public/app.html`: una sola página con cabecera, tablero, filtros, tabla, paginación y dos `<dialog>`
+  (detalle y nuevo ticket). Sin recargas.
+- `public/assets/js/`: `utils.js` (helper `h` que crea nodos con `createElement`/`textContent`, `escapeHtml`,
+  `debounce`, `formatearFecha`), `api.js` (ÚNICO punto de `fetch`, envía `X-API-Key` y traduce el formato único
+  de error a un `Error` con `codigo`/`fields`/`http`), `ui.js` (tablero, detalle con historial, insignias,
+  avisos y catálogos cacheados), `tabla.js` (filtros + paginación de servidor, 10/página) y `form.js`
+  (debounce ~400 ms del usuario, validación y mapeo de `fields` a los inputs).
+- `public/assets/css/estilos.css`: estilos propios, sin CDN (funciona sin internet).
+- `public/index.php`: intercepta `/` y `/app.html` y sirve el HTML **inyectando la API key** desde
+  `config/config.php` (no versionada), reemplazando el marcador `__CLAVE_API__`.
+
+**Decisiones (para sustentación):**
+- La API key no se versiona: el HTML se sirve por PHP con la clave inyectada; si `app.html` se abre como
+  archivo estático, la SPA detecta el marcador y la pide por pantalla (se recuerda en `localStorage`).
+- DOM seguro: todo nodo pasa por `Utils.h`; el guard §12 prohíbe `innerHTML`, así que la tabla y los modales
+  se construyen sin HTML crudo (CA-7, §4.5).
+- Filtros y paginación 100% en servidor; el cliente no ordena ni recorta en memoria.
+- Módulos como IIFEs con un global por archivo; sin bundler ni framework (§7, §2).
+
+**Verificación:**
+- `GET /` y `/app.html` → HTML con `apiKey: "mi-clave-secreta-123"` (0 marcadores restantes);
+  `/assets/js/api.js` y `/assets/css/estilos.css` servidos con su MIME; `/api/ping` sigue OK.
+- `node --check` sin errores en los 5 módulos JS.
+- Flujo que consume el front (curl): crear (`TK-2026-000026`), resumen, lista filtrada, cerrar
+  (`EN CURSO`→`CERRADO`, `sla=null`) y reasignar (`REASIGNACION`). Guards: TODO OK (tras reformular dos
+  comentarios que contenían la palabra prohibida). BD restaurada con `seed.sql`.

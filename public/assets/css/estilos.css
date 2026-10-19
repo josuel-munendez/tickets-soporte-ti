@@ -1,0 +1,156 @@
+/* Estilos de la SPA de Soporte TI (MEGACOMERCIAL SAS).
+   Objetivo: interfaz clara sin depender de CDN (funciona sin internet). */
+
+:root {
+  --verde: #1f9d55;
+  --ambar: #d9822b;
+  --rojo: #c0392b;
+  --azul: #2b6cb0;
+  --gris-900: #1a202c;
+  --gris-700: #4a5568;
+  --gris-400: #a0aec0;
+  --gris-200: #e2e8f0;
+  --gris-100: #f7fafc;
+  --blanco: #ffffff;
+  --sombra: 0 1px 3px rgba(0, 0, 0, .12), 0 1px 2px rgba(0, 0, 0, .08);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--gris-900);
+  background: var(--gris-100);
+}
+
+/* Cabecera ---------------------------------------------------------------- */
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 1.25rem;
+  background: var(--gris-900);
+  color: var(--blanco);
+}
+.cabecera__marca { display: flex; align-items: center; gap: .75rem; }
+.cabecera h1 { margin: 0; font-size: 1.15rem; }
+.cabecera p { margin: 0; font-size: .8rem; color: var(--gris-400); }
+.logo {
+  display: grid; place-items: center;
+  width: 2.5rem; height: 2.5rem; border-radius: .6rem;
+  background: var(--azul); font-weight: 700;
+}
+
+/* Layout ------------------------------------------------------------------ */
+.contenido { max-width: 1200px; margin: 1.25rem auto; padding: 0 1.25rem; display: grid; gap: 1.25rem; }
+.panel { background: var(--blanco); border-radius: .6rem; box-shadow: var(--sombra); overflow: hidden; }
+
+/* Tablero ----------------------------------------------------------------- */
+.tablero { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }
+.tarjeta {
+  background: var(--blanco); border-radius: .6rem; box-shadow: var(--sombra);
+  padding: .9rem 1rem; display: flex; flex-direction: column; gap: .25rem;
+  border-left: 4px solid var(--gris-400);
+}
+.tarjeta--cargando { border-left-color: var(--gris-400); color: var(--gris-700); }
+.tarjeta__valor { font-size: 1.7rem; font-weight: 700; }
+.tarjeta__etiqueta { font-size: .78rem; color: var(--gris-700); text-transform: uppercase; letter-spacing: .04em; }
+.tarjeta--abierto { border-left-color: var(--azul); }
+.tarjeta--curso { border-left-color: var(--ambar); }
+.tarjeta--cerrado { border-left-color: var(--verde); }
+.tarjeta--vencido { border-left-color: var(--rojo); }
+.tarjeta__carga { font-size: .78rem; color: var(--gris-700); }
+
+/* Filtros ----------------------------------------------------------------- */
+.filtros { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; padding: 1rem 1.25rem; border-bottom: 1px solid var(--gris-200); }
+.campo { display: flex; flex-direction: column; gap: .25rem; min-width: 130px; }
+.campo--crece { flex: 1 1 220px; }
+.campo > span { font-size: .75rem; font-weight: 600; color: var(--gris-700); }
+input, select, textarea {
+  font: inherit; padding: .5rem .6rem; border: 1px solid var(--gris-400);
+  border-radius: .4rem; background: var(--blanco); color: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--azul); border-color: var(--azul); }
+.ayuda { font-size: .75rem; color: var(--gris-700); }
+
+/* Botones ----------------------------------------------------------------- */
+.btn {
+  font: inherit; cursor: pointer; border: 1px solid var(--gris-400);
+  background: var(--blanco); color: var(--gris-900);
+  padding: .5rem .9rem; border-radius: .4rem; transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--gris-100); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn--primario { background: var(--azul); border-color: var(--azul); color: var(--blanco); }
+.btn--primario:hover { background: #245a92; }
+.btn--icono { border: none; background: transparent; font-size: 1rem; padding: .2rem .5rem; }
+
+/* Tabla ------------------------------------------------------------------- */
+.tabla-envoltura { overflow-x: auto; }
+.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tabla th, .tabla td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--gris-200); white-space: nowrap; }
+.tabla th { background: var(--gris-100); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--gris-700); }
+.tabla tbody tr { cursor: pointer; }
+.tabla tbody tr:hover { background: #eef4fb; }
+.vacio { text-align: center; color: var(--gris-700); padding: 1.5rem; }
+
+/* Insignias --------------------------------------------------------------- */
+.insignia { display: inline-block; padding: .15rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 600; }
+.insignia--abierto { background: #ebf4ff; color: var(--azul); }
+.insignia--curso { background: #fef3c7; color: #92610a; }
+.insignia--cerrado { background: #def7ec; color: var(--verde); }
+.insignia--alta { background: #fde8e8; color: var(--rojo); }
+.insignia--media { background: #fef3c7; color: #92610a; }
+.insignia--baja { background: var(--gris-200); color: var(--gris-700); }
+.insignia--en_tiempo { background: #def7ec; color: var(--verde); }
+.insignia--por_vencer { background: #fef3c7; color: #92610a; }
+.insignia--vencido { background: #fde8e8; color: var(--rojo); }
+.insignia--nulo { background: var(--gris-200); color: var(--gris-700); }
+
+/* Paginación -------------------------------------------------------------- */
+.paginacion { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .9rem; }
+.paginacion__info { font-size: .85rem; color: var(--gris-700); }
+
+/* Modales ----------------------------------------------------------------- */
+.modal { border: none; border-radius: .6rem; padding: 0; width: min(760px, 94vw); box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+.modal::backdrop { background: rgba(15, 23, 42, .55); }
+.modal__caja { display: flex; flex-direction: column; max-height: 90vh; }
+.modal__cabecera { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1.1rem; border-bottom: 1px solid var(--gris-200); }
+.modal__cabecera h2 { margin: 0; font-size: 1.05rem; }
+.modal__cuerpo { padding: 1.1rem; overflow-y: auto; }
+.modal__acciones { display: flex; flex-wrap: wrap; gap: 1rem; padding: 1rem 1.1rem; border-top: 1px solid var(--gris-200); background: var(--gris-100); }
+.modal__acciones--fin { justify-content: flex-end; }
+.accion { display: flex; align-items: end; gap: .6rem; flex: 1 1 320px; }
+.accion .campo { flex: 1; }
+
+/* Detalle ----------------------------------------------------------------- */
+.detalle-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+.detalle-cabecera h3 { margin: 0; font-size: 1.1rem; }
+.detalle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .6rem 1rem; margin-bottom: 1rem; }
+.detalle-grid div { font-size: .85rem; }
+.detalle-grid dt { color: var(--gris-700); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+.detalle-grid dd { margin: .15rem 0 0; }
+.bloque { margin-bottom: 1rem; }
+.bloque h4 { margin: 0 0 .3rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--gris-700); }
+.bloque p { margin: 0; white-space: pre-wrap; }
+.historial { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.historial li { border-left: 3px solid var(--gris-200); padding: .3rem .7rem; }
+.historial time { font-size: .75rem; color: var(--gris-700); }
+
+/* Formulario nuevo -------------------------------------------------------- */
+.formulario { display: grid; gap: .8rem; }
+.rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.error { color: var(--rojo); font-size: .85rem; margin: 0; min-height: 1.1rem; }
+.campo--error input, .campo--error select, .campo--error textarea { border-color: var(--rojo); }
+
+/* Aviso ------------------------------------------------------------------- */
+.aviso {
+  position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(140%);
+  background: var(--gris-900); color: var(--blanco); padding: .7rem 1.1rem; border-radius: .5rem;
+  box-shadow: var(--sombra); font-size: .9rem; max-width: 90vw; transition: transform .25s ease; z-index: 50;
+}
+.aviso--visible { transform: translateX(-50%) translateY(0); }
+.aviso--error { background: var(--rojo); }
+.aviso--ok { background: var(--verde); }

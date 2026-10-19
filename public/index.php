@@ -28,11 +28,12 @@ use App\Services\UsuarioService;
 use App\Support\Config;
 use App\Support\Database;
 
-// En el servidor de desarrollo, los archivos estáticos (app.html, assets) se
-// sirven solos; index.php solo atiende lo que no sea un archivo real.
+// En el servidor de desarrollo, los archivos estáticos (assets) se sirven solos;
+// index.php atiende la SPA (para inyectar la API key sin versionarla) y la API.
 if (PHP_SAPI === 'cli-server') {
     $rutaSolicitada = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-    if (is_string($rutaSolicitada) && !str_contains($rutaSolicitada, '..')) {
+    $esRutaSpa = is_string($rutaSolicitada) && ($rutaSolicitada === '/' || $rutaSolicitada === '/app.html');
+    if (!$esRutaSpa && is_string($rutaSolicitada) && !str_contains($rutaSolicitada, '..')) {
         $archivoEstatico = __DIR__ . $rutaSolicitada;
         if (is_file($archivoEstatico)) {
             return false;
@@ -88,6 +89,18 @@ $registrarError = static function (Throwable $error) use ($raiz): void {
 
 try {
     Config::cargar($raiz . '/config/config.php');
+
+    // SPA (§7): se sirve app.html inyectando la API key desde config (secreto NO versionado).
+    // Si se abre app.html como archivo estático (Apache/nginx), el marcador queda y la SPA
+    // pide la clave por pantalla (ver assets/js/api.js).
+    if (PHP_SAPI === 'cli-server') {
+        $rutaSolicitada = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        if ($rutaSolicitada === '/' || $rutaSolicitada === '/app.html') {
+            $plantilla = file_get_contents(__DIR__ . '/app.html');
+            echo str_replace('__CLAVE_API__', htmlspecialchars(Config::apiKey(), ENT_QUOTES), (string) $plantilla);
+            return;
+        }
+    }
 
     // Inyección manual de dependencias (§10 D): PDO → Repos → Services → Controllers.
     // Si la BD no responde, PDOException cae al catch global ⇒ 500 sin trazas.
