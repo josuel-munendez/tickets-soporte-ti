@@ -230,9 +230,15 @@ Ambos incluyen los 9 endpoints y los casos de error (401, 404, 409, 422).
 ├── AGENTS.md              # Constitución del proyecto (reglas para agentes/desarrolladores)
 ├── README.md              # Este archivo
 ├── composer.json          # Autoload PSR-4 (App\ => src/) y PHPUnit
+├── .opencode/             # Configuración de la herramienta de IA (opencode.json)
 ├── config/                # config.example.php (plantilla) / config.php (real, ignorado por Git)
 ├── database/              # schema.sql + seed.sql + init-render.sh (proveedores gestionados)
 ├── public/                # ÚNICA carpeta pública: index.php (front controller), app.html (SPA), .htaccess, assets/
+├── docs/                  # Doc-as-Code
+│   ├── contexto/          # Enunciado y descripción del cargo (material de referencia)
+│   ├── prompts-ia/        # Prompts de trabajo con el agente
+│   ├── herramientas-ia/   # Notas sobre las herramientas de IA
+│   └── evidencias/        # Ejemplo de export CSV
 ├── src/
 │   ├── Controllers/       # HTTP delgado (lee Request, llama Service, responde JSON)
 │   ├── Services/          # Reglas de negocio y transacciones
@@ -330,6 +336,9 @@ Toda la documentación vive en el repo y evoluciona con el código (AGENTS.md §
 | [`docs/06-decisiones/`](docs/06-decisiones/) | ADR-001…ADR-005 |
 | [`docs/07-pruebas.md`](docs/07-pruebas.md) | Matriz de pruebas y checklist de entrega |
 | [`docs/diagrams/`](docs/diagrams/) | Fuentes Mermaid (`.mmd`) y PlantUML (`.puml`) |
+| [`docs/contexto/`](docs/contexto/) | Enunciado de la prueba y descripción del cargo (material de referencia) |
+| [`docs/evidencias/`](docs/evidencias/) | Ejemplo de export CSV |
+| [`docs/prompts-ia/`](docs/prompts-ia/) · [`docs/herramientas-ia/`](docs/herramientas-ia/) | Prompts y configuración de las herramientas de IA |
 | [`specs/`](specs/) | SDD: `spec.md` / `plan.md` / `tasks.md` por fase |
 | [`docs/ai-log.md`](docs/ai-log.md) | Bitácora de uso de IA |
 

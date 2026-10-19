@@ -5,6 +5,7 @@ node_modules/
 .phpunit.result.cache
 .env
 *.log
+tickets_*.csv
 .idea/
 .vscode/
 .DS_Store
