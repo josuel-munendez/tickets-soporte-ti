@@ -358,3 +358,24 @@ desplegarlo gratis y accesible en línea (Render).
 **Nota para el autor:** el despliegue free de Render **se suspende tras ~15 min** sin tráfico (despierta
 en ~30 s). Render ofrece MySQL y PostgreSQL; el proyecto es MySQL 8.0, así que si la región no habilita
 MySQL free, la alternativa indicada en el README es Railway con los mismos pasos (`DB_URL`).
+
+## 2026-10-19 — Fase 12: Organización del repositorio
+
+**Qué se pidió (usuario):** mantener los archivos extra (contexto de la prueba, prompts de IA,
+config del agente, CSV de prueba) pero **organizarlos mejor en subcarpetas** en vez de dejarlos
+sueltos en la raíz.
+
+**Qué se generó (agente):**
+- `CONTEXT/` → `docs/contexto/` (enunciado PDF/MD/TXT + README explicativo).
+- `prompts/` → `docs/prompts-ia/` (+ README).
+- `opencode.json` → `.opencode/opencode.json` (ubicación que OpenCode descubre automáticamente;
+  antes estaba en la raíz). Se añadió `docs/herramientas-ia/` con notas.
+- `tickets_20261019_161023.csv` → `docs/evidencias/ejemplo-export.csv` (evidencia del punto extra CSV).
+- `.gitignore`: ignora `tickets_*.csv` (los export de prueba no se versionan).
+- `AGENTS.md` y `README.md`: actualizados con la nueva estructura.
+
+**Decisión de diseño:** mover `opencode.json` a `.opencode/` (en vez de `docs/herramientas-ia/`) para
+**no romper** el descubrimiento de configuración de OpenCode, que busca `opencode.json` en la raíz del
+proyecto o en `.opencode/`. Los movimientos se hicieron con `git mv` para conservar el historial.
+
+**Verificación:** `scripts/guards.sh` → TODO OK. Sin referencias rotas a las rutas antiguas.
