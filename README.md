@@ -253,7 +253,7 @@ Ambos incluyen los 9 endpoints y los casos de error (401, 404, 409, 422).
 ├── docker/                # entrypoint.sh (genera config.php desde el entorno)
 ├── Dockerfile             # Imagen PHP 8.1 + Apache con el docroot en public/
 ├── docker-compose.yml     # app + MySQL 8.0 (schema/seed como initdb)
-├── render.yaml            # Blueprint de Render (web service + MySQL)
+├── render.yaml            # Blueprint de Render (solo el web service; DB_URL manual)
 └── .env.example           # Plantilla de variables de entorno para Docker (sin secretos)
 ```
 
@@ -293,33 +293,62 @@ bash scripts/guards.sh
 
 `guards.sh` falla si un PHP no compila, si se commitea `config/config.php` o hay secretos, si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO fuera de `Repositories/Support` o si queda depuración olvidada.
 
-## 12. Despliegue en línea (Render, gratis)
+## 12. Despliegue en línea (punto extra, opcional)
 
-El repositorio trae todo lo necesario para desplegar en [Render](https://render.com) con Docker y una base **MySQL gestionada**, sin cambiar código:
+> El enunciado marca el despliegue en línea como **punto extra opcional**. La calificación
+> principal (100 pts) se juega en **local**, con `docker compose` o `php -S`, donde tienes control
+> total de MySQL, el consecutivo y PHPUnit. Si el tiempo aprieta, prioriza local + video + README.
+
+El repo ya trae todo lo necesario para desplegar por Docker **sin cambiar código**:
 
 - `Dockerfile` con `ENTRYPOINT` propio: genera `config/config.php` desde variables de entorno y **adapta Apache al `$PORT`** que inyecta la plataforma.
 - `docker/entrypoint.sh` acepta **`DB_URL`** (`mysql://usuario:pass@host:puerto/nombre`) o las variables sueltas (`DB_HOST`, `DB_PUERTO`, …) que usa `docker compose`.
-- `render.yaml` cria el *web service* y la base de datos de una sola vez (Blueprint).
 - `database/init-render.sh` aplica el esquema y el seed en proveedores gestionados (omite `CREATE DATABASE`/`USE`, que solo aplican en local).
 
-### Pasos
+> ⚠️ **Render NO ofrece MySQL gestionado nativo** (solo PostgreSQL y Redis). Por eso hay dos caminos reales:
 
-1. **Crea el servicio:** en Render, **New +** → **Blueprint** y apunta al repositorio (usa `render.yaml`), o **New +** → **Web Service** con:
+### Opción 1 — Railway (recomendada para demo completa) ⭐
+
+[Railway](https://railway.com) sí ofrece **MySQL con un clic** y detecta el `Dockerfile`. La forma más simple de tener app + base juntas y conectadas:
+
+1. **New Project** → **Deploy from GitHub repo** → elige `tickets-soporte-ti` (Railway detecta el `Dockerfile`).
+2. En el mismo proyecto: **+ New** → **Database** → **MySQL**.
+3. En el servicio de la app, añade la variable `API_KEY` (tu clave) y deja que el `DB_URL` apunte al MySQL del proyecto (Railway inyecta la URL interna; si no, copia la conexión a mano).
+4. **Inicializa la base** una sola vez, desde tu equipo, con la URL pública del MySQL:
+
+```bash
+DB_URL="mysql://usuario:pass@host:puerto/railway" bash database/init-render.sh
+```
+
+5. Abre la URL pública del servicio y usa la misma `API_KEY` en `X-API-Key`.
+
+> Railway da una **prueba gratuita de $5 por 30 días** (sin tarjeta) y luego un plan Free con $1/mes de crédito. Suficiente para una entrega.
+
+### Opción 2 — Render (app) + MySQL externo gratis
+
+Render hospeda el **servicio web** gratis, pero el MySQL lo pones **tú, externo** (Railway, Aiven, Clever Cloud…), que te da una URL `mysql://…` gratuita:
+
+1. Crea un MySQL gratuito en el proveedor externo y copia su **URL de conexión**.
+2. En Render: **New +** → **Blueprint** (usa `render.yaml`) o **New +** → **Web Service** con:
    - **Language:** Docker · **Branch:** `main` · **Dockerfile Path:** `./Dockerfile` · **Health Check Path:** `/api/ping`
-2. **Variables de entorno** del web service:
-   - `API_KEY` → tu clave (o usa `generateValue` del blueprint).
-   - `DB_URL` → *Internal Database URL* de la base que creaste (el blueprint la enlaza solo).
-3. **Inicializa la base** una sola vez (Render → servicio de BD → *Connect* → copia la URL y ejecútala localmente):
+3. Variables de entorno del servicio web:
+   - `API_KEY` → tu clave (o usa el `generateValue` del blueprint).
+   - `DB_URL` → la URL del MySQL externo (en el blueprint va como `sync: false`, se pega a mano).
+4. Inicializa la base una sola vez:
 
 ```bash
 DB_URL="mysql://usuario:pass@host:puerto/soporte_ti" bash database/init-render.sh
 ```
 
-4. Abre la URL pública del servicio: **`https://<servicio>.onrender.com/`** (SPA) y **`/api/ping`** (API). Usa la misma `API_KEY` en el encabezado `X-API-Key`.
+5. Abre **`https://<servicio>.onrender.com/`** (SPA) y **`/api/ping`** (API).
 
-> **Plan free:** el servicio se suspende tras ~15 min sin tráfico y despierta en ~30 s en la primera petición. Es normal en la capa gratuita.
+> **Plan free de Render:** el servicio se suspende tras ~15 min sin tráfico y despierta en ~30 s en la primera petición. Es normal en la capa gratuita.
 
-> **Nota:** Render ofrece MySQL y PostgreSQL. El proyecto está escrito para **MySQL 8.0**; si tu región no habilita MySQL en plan free, usa [Railway](https://railway.app) (también detecta el `Dockerfile` y ofrece MySQL) siguiendo los mismos pasos con `DB_URL`.
+### Opción 3 — Solo local (lo más seguro para el video)
+
+Si no quieres lidiar con la nube, graba el video con la app local (`docker compose up --build` o `php -S localhost:8080 -t public public/index.php`). Todo funciona sin latencia de red y controlas el consecutivo, el SLA y los errores HTTP. El despliegue en línea queda como extra.
+
+> La misma mecánica (`DB_URL` + `database/init-render.sh`) sirve para cualquier proveedor con MySQL: Fly.io, Clever Cloud, Aiven, etc.
 
 ## 13. Documentación (Doc-as-Code)
 

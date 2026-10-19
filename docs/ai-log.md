@@ -379,3 +379,28 @@ sueltos en la raíz.
 proyecto o en `.opencode/`. Los movimientos se hicieron con `git mv` para conservar el historial.
 
 **Verificación:** `scripts/guards.sh` → TODO OK. Sin referencias rotas a las rutas antiguas.
+
+## 2026-10-19 — Fase 13: Despliegue realista (Render no da MySQL nativo)
+
+**Qué se pidió (usuario):** corregir el enfoque de despliegue: Render **no** ofrece MySQL
+gestionado de forma nativa (solo PostgreSQL y Redis). Hay que dejar el repo honesto y
+funcional, sin prometer algo que la plataforma no da.
+
+**Verificación (fuentes oficiales):**
+- Render FAQ (render.com/docs/faq): "Render offers managed Postgres databases... Key Value
+  instances... You can also run your own custom database instance... such as MySQL"
+  → MySQL **no es nativo**, solo contenedor propio con disco persistente.
+- Railway (2026): sí ofrece MySQL con un clic (`mysql:8`) y prueba gratis de $5 por 30 días
+  sin tarjeta; luego plan Free con $1/mes de crédito.
+
+**Qué se cambió (agente):**
+- `render.yaml`: se quitó el bloque `databases:` (MySQL gestionado) que **haría fallar** el
+  blueprint. Ahora define solo el `web service`; `DB_URL` pasa a `sync: false` (valor manual
+  en el panel, apuntando a un MySQL externo). Nota explicativa en la cabecera.
+- `README.md` §12: reescrito con tres rutas reales — (1) Railway app+MySQL (recomendada),
+  (2) Render app + MySQL externo gratis, (3) solo local para el video. Se aclara que el
+  despliegue en línea es **punto extra opcional** y que la nota principal se juega en local.
+- Estructura del README: descripción de `render.yaml` actualizada.
+
+**Verificación:** `render.yaml` parsea como YAML válido (solo clave `services`).
+`scripts/guards.sh` → TODO OK.
