@@ -404,3 +404,56 @@ funcional, sin prometer algo que la plataforma no da.
 
 **Verificación:** `render.yaml` parsea como YAML válido (solo clave `services`).
 `scripts/guards.sh` → TODO OK.
+
+## 2026-10-19 — Fase 14: Despliegue "todo en uno" para Render Free (sin MySQL externo)
+
+**Qué se pidió (usuario):** no usar Railway (lo considera de pago) y desplegar en Render **Free**
+la app **con la base de datos dentro del mismo contenedor** (Opción B), para que funcione sin
+contratar un MySQL externo.
+
+**Contexto/limitación verificada:** el plan Free de Render **no incluye discos persistentes** y el
+servicio se suspende tras ~15 min sin tráfico; al recrearse el contenedor, la BD vuelve a cero.
+Solución: empaquetar PHP + Apache + MariaDB en una sola imagen y **re-aplicar el seed en cada
+arranque** (el `seed.sql` es re-ejecutable por diseño).
+
+**Qué se generó (agente):**
+- `Dockerfile.allinone`: imagen única con **MariaDB Server** + PHP 8.1 + Apache. Inicializa el
+  datadir en build, instala `pdo_mysql`/`zip`, ajusta docroot a `public/` y usa
+  `docker/entrypoint-allinone.sh` como `ENTRYPOINT`.
+- `docker/entrypoint-allinone.sh`: arranca MariaDB, espera el socket, aplica `schema.sql` + `seed.sql`,
+  **genera `config/config.php` con las claves correctas en español** (`puerto`/`nombre`/`usuario`/
+  `contrasena`) y adapta Apache al `$PORT`.
+- `README.md` §12: reordenado — **Opción 1 = Render todo en uno** (recomendada para quien no usa
+  Railway), con la advertencia de la poca persistencia del plan Free; las demás opciones quedan
+  como alternativas. Estructura del proyecto actualizada.
+- NO se tocaron `Dockerfile` ni `docker/entrypoint.sh` (siguen sirviendo para docker-compose y para
+  Render con BD externa): se añadió una variante en paralelo.
+
+**Por qué NO se siguió literalmente el script propuesto por el usuario:** el `config.php` de ese
+script usaba claves en inglés (`port`, `database`, `username`, `password`), pero la app lee
+`puerto`, `nombre`, `usuario`, `contrasena` (ver `src/Support/Database.php:30-38`), por lo que
+habría fallado al conectar. También faltaba `libzip-dev`/`unzip` para Composer.
+
+**Verificación:** `sh -n` del entrypoint OK; imagen construida y probada (ver commit).
+
+**Incidente durante la prueba de la imagen (resuelto):**
+La primera versión del entrypoint generaba `config.php` con `usuario = root` y sin contraseña.
+La app (que conecta por TCP a `127.0.0.1:3306`) devolvía `500` con
+`SQLSTATE[HY000] [1698] Access denied for user 'root'@'localhost'`. Causa: en Debian/Ubuntu el
+usuario `root` de MariaDB usa **autenticación unix_socket** y **rechaza** las conexiones TCP.
+
+**Corrección:** el entrypoint ahora crea un **usuario dedicado** `soporte`@`%` con contraseña
+(`CREATE USER IF NOT EXISTS ... IDENTIFIED BY ...` + `GRANT` sobre `soporte_ti`), y genera
+`config.php` apuntando a él. El CLI sigue usando `mysql -u root` (vía socket), que sí funciona.
+Verificado: `/api/ping`, `/api/tickets`, `/api/resumen` responden `200` y el 401 sin API key se
+comporta como corresponde.
+
+**Verificación final (imagen `Dockerfile.allinone`, simulando Render Free con `PORT` + `API_KEY`):**
+- Arranque limpio: MariaDB + schema/seed + Apache en el `$PORT`.
+- `GET /api/ping` y `GET /api/tickets` sin key → **401** (fail-closed, §4.3).
+- `GET /api/tickets` con key → **200**, `total: 25` (seed aplicado).
+- `GET /api/resumen` → datos reales del tablero (6 abiertos, 6 en curso, 13 cerrados, 4 vencidos).
+- `POST /api/tickets` → **201**, `TK-2026-000026` (consecutivo correcto) y `total: 26`.
+- `PATCH .../estado` ABIERTO→CERRADO → **409 TRANSICION_INVALIDA**; ABIERTO→EN CURSO → **200**.
+- `GET /` (SPA) → **200**.
+- Tras `docker restart`, la BD vuelve a 25 tickets (comportamiento documentado del plan Free sin disco).
