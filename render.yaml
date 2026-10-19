@@ -1,10 +1,20 @@
 # Render Blueprint (Infrastructure as Code, opcional).
-# Permite crear el servicio web y la base de datos con un solo "New + > Blueprint".
 # Docs: https://render.com/docs/blueprint-spec
 #
-# Tras el primer despliegue, ejecuta una sola vez la inicialización del esquema:
-#   DB_URL="<Internal Database URL>" bash database/init-render.sh
-# (la BD gestionada ya existe y no permite CREATE DATABASE).
+# IMPORTANTE sobre la base de datos:
+#   Render NO ofrece MySQL gestionado de forma nativa (solo PostgreSQL y
+#   Key Value/Redis). Para usar este proyecto (MySQL 8.0) en Render tienes dos vías:
+#
+#   a) MySQL EXTERNO gratuito (Railway, Aiven, Clever Cloud...): creas la base allí,
+#      copias su URL de conexión y la pegas a mano en la variable DB_URL de este
+#      servicio (NO la enlaza el blueprint). Luego inicializas una sola vez:
+#         DB_URL="mysql://usuario:pass@host:puerto/nombre" bash database/init-render.sh
+#
+#   b) Desplegar TODO en Railway (app + MySQL en el mismo proyecto), que sí trae
+#      MySQL con un clic. Ver la sección "Despliegue en línea" del README.
+#
+# Por eso este blueprint define SOLO el servicio web; DB_URL se configura a mano.
+
 services:
   - type: web
     name: tickets-soporte-ti
@@ -15,15 +25,7 @@ services:
     envVars:
       - key: API_KEY
         generateValue: true        # Render genera una clave aleatoria
+      # DB_URL apunta a un MySQL externo; se define en el panel de Render.
+      # Formato: mysql://usuario:contrasena@host:puerto/nombre
       - key: DB_URL
-        fromDatabase:
-          name: tickets-db
-          property: connectionString
-
-databases:
-  - name: tickets-db
-    databaseName: soporte_ti
-    plan: free
-    # Render ofrece PostgreSQL y (según región/plan) MySQL. Si tu región no
-    # permite MySQL en plan free, cambia el proyecto a PostgreSQL o usa Railway
-    # (el código sigue siendo compatible con MySQL).
+        sync: false                # sync:false = valor manual, no versionado
