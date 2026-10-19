@@ -38,6 +38,18 @@ final class TicketController
         return Response::json($this->tickets->crear($peticion->json()), 201);
     }
 
+    /** PATCH /api/tickets/{numero}/estado — cambia el estado (RN-06). */
+    public function cambiarEstado(Request $peticion, array $parametros): Response
+    {
+        return Response::json($this->tickets->cambiarEstado($parametros['numero'] ?? '', $peticion->json()));
+    }
+
+    /** PATCH /api/tickets/{numero}/tecnico — reasigna el técnico (RN-05/RN-07). */
+    public function reasignarTecnico(Request $peticion, array $parametros): Response
+    {
+        return Response::json($this->tickets->reasignarTecnico($parametros['numero'] ?? '', $peticion->json()));
+    }
+
     /** GET /api/tickets/{numero} — detalle con historial completo. */
     public function detalle(Request $peticion, array $parametros): Response
     {

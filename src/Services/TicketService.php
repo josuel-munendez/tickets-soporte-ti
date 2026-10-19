@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Domain\Constantes;
+use App\Domain\EstadoTicket;
 use App\Domain\SlaCalculator;
 use App\Exceptions\ConflictoException;
 use App\Exceptions\NoEncontradoException;
@@ -73,6 +74,134 @@ final class TicketService
     }
 
     /**
+     * Cambia el estado de un ticket siguiendo la máquina de estados (RN-06,
+     * PATCH /api/tickets/{numero}/estado). Estado desconocido → 422; transición
+     * ilegal → 409; cerrar exige observación (la solución) → 422.
+     *
+     * @param  array<string, mixed> $datos Body crudo del request.
+     * @return array<string, mixed> Detalle actualizado del ticket.
+     */
+    public function cambiarEstado(string $numero, array $datos): array
+    {
+        $estadoNuevo = is_string($datos['estado'] ?? null) ? trim($datos['estado']) : '';
+        if (!EstadoTicket::esValido($estadoNuevo)) {
+            throw new ValidacionException(
+                'Datos inválidos.',
+                ['estado' => 'Valores permitidos: ' . implode(', ', Constantes::ESTADOS) . '.'],
+            );
+        }
+
+        $observacion = is_string($datos['observacion'] ?? null) ? trim($datos['observacion']) : '';
+        if ($estadoNuevo === 'CERRADO' && $observacion === '') {
+            // RN-06: cerrar exige la solución aplicada.
+            throw new ValidacionException('Datos inválidos.', ['observacion' => 'Debe indicar la solución aplicada.']);
+        }
+
+        $this->database->transaction(function () use ($numero, $estadoNuevo, $observacion): void {
+            // RN-06: leer el ticket con FOR UPDATE ANTES de validar la transición.
+            $ticket = $this->tickets->bloquearPorNumero($numero);
+            if ($ticket === null) {
+                throw new NoEncontradoException("Ticket no encontrado: {$numero}");
+            }
+
+            $estadoActual = $ticket['estado'];
+            if (!EstadoTicket::permiteTransicion($estadoActual, $estadoNuevo)) {
+                throw new ConflictoException(
+                    "Transición no permitida: {$estadoActual} → {$estadoNuevo}.",
+                    'TRANSICION_INVALIDA',
+                );
+            }
+
+            $ahora = new DateTimeImmutable('now');
+            $cierra = $estadoNuevo === 'CERRADO';
+            $this->tickets->actualizarEstado(
+                (int) $ticket['id'],
+                $estadoNuevo,
+                $cierra ? $observacion : null,
+                $cierra ? $ahora->format('Y-m-d H:i:s') : null,
+                $ahora->format('Y-m-d H:i:s'),
+            );
+
+            // RN-09: historial del cambio en la misma transacción.
+            $this->tickets->insertarHistorial([
+                'ticket_id' => (int) $ticket['id'],
+                'tipo_cambio' => 'ESTADO',
+                'estado_anterior' => $estadoActual,
+                'estado_nuevo' => $estadoNuevo,
+                'tecnico_anterior_id' => null,
+                'tecnico_nuevo_id' => null,
+                'observacion' => $observacion === '' ? null : $observacion,
+                'creado_en' => $ahora->format('Y-m-d H:i:s'),
+            ]);
+        });
+
+        return $this->detalle($numero);
+    }
+
+    /**
+     * Reasigna el técnico de un ticket (RN-05/RN-07, PATCH /api/tickets/{numero}/tecnico).
+     * Un ticket CERRADO no se reasigna (409); el técnico nuevo debe estar activo y
+     * con cupo; reasignar al MISMO técnico no cuenta ni falla (no-op, RN-05).
+     *
+     * @param  array<string, mixed> $datos Body crudo del request.
+     * @return array<string, mixed> Detalle actualizado del ticket.
+     */
+    public function reasignarTecnico(string $numero, array $datos): array
+    {
+        $errores = [];
+        $tecnicoNuevoId = $this->enteroRequerido($datos['tecnico_id'] ?? null, 'tecnico_id', $errores);
+        if ($errores !== []) {
+            throw new ValidacionException('Datos inválidos.', $errores);
+        }
+
+        $observacion = is_string($datos['observacion'] ?? null) ? trim($datos['observacion']) : '';
+
+        $this->database->transaction(function () use ($numero, $tecnicoNuevoId, $observacion): void {
+            // Orden de bloqueos §6.1: ticket → técnico.
+            $ticket = $this->tickets->bloquearPorNumero($numero);
+            if ($ticket === null) {
+                throw new NoEncontradoException("Ticket no encontrado: {$numero}");
+            }
+
+            // RN-07: un ticket cerrado no admite reasignación.
+            if ($ticket['estado'] === 'CERRADO') {
+                throw new ConflictoException('No se puede reasignar un ticket cerrado.', 'TRANSICION_INVALIDA');
+            }
+
+            $tecnicoActualId = (int) $ticket['tecnico_id'];
+            if ($tecnicoActualId === $tecnicoNuevoId) {
+                return; // RN-05: mismo técnico ⇒ no cuenta, no se registra historial
+            }
+
+            // RN-05: el técnico nuevo debe existir, estar activo y tener cupo (bajo bloqueo).
+            $tecnico = $this->tecnicos->bloquearPorId($tecnicoNuevoId);
+            if ($tecnico === null || (int) $tecnico['activo'] !== 1) {
+                throw new ValidacionException('Datos inválidos.', ['tecnico_id' => 'El técnico no existe o está inactivo.']);
+            }
+            if ($this->tecnicos->contarActivos($tecnicoNuevoId) >= Constantes::MAX_TICKETS_TECNICO) {
+                throw new ConflictoException('El técnico alcanzó el máximo de tickets activos.', 'TECNICO_AL_TOPE');
+            }
+
+            $ahora = new DateTimeImmutable('now');
+            $this->tickets->actualizarTecnico((int) $ticket['id'], $tecnicoNuevoId, $ahora->format('Y-m-d H:i:s'));
+
+            // RN-09: historial de la reasignación (estado_nuevo NO nulo ⇒ se repite el vigente).
+            $this->tickets->insertarHistorial([
+                'ticket_id' => (int) $ticket['id'],
+                'tipo_cambio' => 'REASIGNACION',
+                'estado_anterior' => $ticket['estado'],
+                'estado_nuevo' => $ticket['estado'],
+                'tecnico_anterior_id' => $tecnicoActualId,
+                'tecnico_nuevo_id' => $tecnicoNuevoId,
+                'observacion' => $observacion === '' ? null : $observacion,
+                'creado_en' => $ahora->format('Y-m-d H:i:s'),
+            ]);
+        });
+
+        return $this->detalle($numero);
+    }
+
+    /**
      * Transacción de creación (RN-01/RN-05/RN-09). Orden de bloqueos §6.1:
      * técnico → consecutivo (el ticket aún no existe). Si el tope falla, el
      * ROLLBACK deja el consecutivo sin quemar.
@@ -124,8 +253,17 @@ final class TicketService
                 'vence_en' => $vence->format('Y-m-d H:i:s'),
             ]);
 
-            // 5) RN-09: historial inicial en la misma transacción.
-            $this->tickets->insertarHistorialCreacion($ticketId, $tecnicoId, $ahora->format('Y-m-d H:i:s'));
+            // 5) RN-09: historial inicial ('CREACION') en la misma transacción.
+            $this->tickets->insertarHistorial([
+                'ticket_id' => $ticketId,
+                'tipo_cambio' => 'CREACION',
+                'estado_anterior' => null,
+                'estado_nuevo' => 'ABIERTO',
+                'tecnico_anterior_id' => null,
+                'tecnico_nuevo_id' => $tecnicoId,
+                'observacion' => 'Ticket registrado',
+                'creado_en' => $ahora->format('Y-m-d H:i:s'),
+            ]);
 
             return $numero;
         });

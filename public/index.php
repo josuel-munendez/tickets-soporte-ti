@@ -119,6 +119,8 @@ try {
     $router->agregar('GET', '/api/tickets', [$ticketController, 'listar']);
     $router->agregar('POST', '/api/tickets', [$ticketController, 'crear']);
     $router->agregar('GET', '/api/tickets/{numero}', [$ticketController, 'detalle']);
+    $router->agregar('PATCH', '/api/tickets/{numero}/estado', [$ticketController, 'cambiarEstado']);
+    $router->agregar('PATCH', '/api/tickets/{numero}/tecnico', [$ticketController, 'reasignarTecnico']);
     $router->agregar('GET', '/api/resumen', [$ticketController, 'resumen']);
     $router->agregar('GET', '/api/usuarios/{codigo}', [$usuarioController, 'buscar']);
     $router->agregar('GET', '/api/tecnicos', [$tecnicoController, 'listar']);

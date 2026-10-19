@@ -202,21 +202,91 @@ final class TicketRepository
         return (int) $this->pdo->lastInsertId();
     }
 
-    /** Historial de creación en la MISMA transacción del ticket (RN-09, decisión D4). */
-    public function insertarHistorialCreacion(int $ticketId, int $tecnicoId, string $creadoEn): void
+    /**
+     * Inserta una fila de historial (RN-09). Se usa para la creación, el cambio
+     * de estado y la reasignación, siempre dentro de la misma transacción que
+     * modifica el ticket. `tipo_cambio` ∈ {CREACION, ESTADO, REASIGNACION} y
+     * `estado_nuevo` NO es nulo (en reasignación se repite el estado vigente).
+     *
+     * @param array<string, mixed> $evento
+     */
+    public function insertarHistorial(array $evento): void
     {
         $sentencia = $this->pdo->prepare(
-            "INSERT INTO ticket_historial
+            'INSERT INTO ticket_historial
                 (ticket_id, tipo_cambio, estado_anterior, estado_nuevo,
                  tecnico_anterior_id, tecnico_nuevo_id, observacion, creado_en)
              VALUES
-                (:ticket_id, 'CREACION', NULL, 'ABIERTO', NULL, :tecnico_id, :observacion, :creado_en)",
+                (:ticket_id, :tipo_cambio, :estado_anterior, :estado_nuevo,
+                 :tecnico_anterior_id, :tecnico_nuevo_id, :observacion, :creado_en)',
         );
         $sentencia->execute([
-            ':ticket_id' => $ticketId,
+            ':ticket_id' => $evento['ticket_id'],
+            ':tipo_cambio' => $evento['tipo_cambio'],
+            ':estado_anterior' => $evento['estado_anterior'],
+            ':estado_nuevo' => $evento['estado_nuevo'],
+            ':tecnico_anterior_id' => $evento['tecnico_anterior_id'],
+            ':tecnico_nuevo_id' => $evento['tecnico_nuevo_id'],
+            ':observacion' => $evento['observacion'],
+            ':creado_en' => $evento['creado_en'],
+        ]);
+    }
+
+    /**
+     * Bloquea la fila del ticket (SELECT ... FOR UPDATE) dentro de la transacción
+     * de cambio de estado/reasignación: se lee ANTES de validar la transición (RN-06).
+     *
+     * @return array<string, mixed>|null null si el número no existe.
+     */
+    public function bloquearPorNumero(string $numero): ?array
+    {
+        $sentencia = $this->pdo->prepare(
+            'SELECT id, numero, usuario_id, categoria_id, prioridad, tecnico_id, estado, solucion, creado_en, vence_en
+             FROM tickets WHERE numero = :numero FOR UPDATE',
+        );
+        $sentencia->execute([':numero' => $numero]);
+        $fila = $sentencia->fetch();
+
+        return $fila === false ? null : $fila;
+    }
+
+    /** Persiste el cambio de estado (y, al cerrar, la solución y la fecha de cierre). */
+    public function actualizarEstado(
+        int $ticketId,
+        string $estado,
+        ?string $solucion,
+        ?string $cerradoEn,
+        string $actualizadoEn,
+    ): void {
+        $sentencia = $this->pdo->prepare(
+            'UPDATE tickets
+             SET estado = :estado,
+                 solucion = COALESCE(:solucion, solucion),
+                 cerrado_en = COALESCE(:cerrado_en, cerrado_en),
+                 actualizado_en = :actualizado_en
+             WHERE id = :id',
+        );
+        $sentencia->execute([
+            ':estado' => $estado,
+            ':solucion' => $solucion,
+            ':cerrado_en' => $cerradoEn,
+            ':actualizado_en' => $actualizadoEn,
+            ':id' => $ticketId,
+        ]);
+    }
+
+    /** Persiste la reasignación de técnico de un ticket. */
+    public function actualizarTecnico(int $ticketId, int $tecnicoId, string $actualizadoEn): void
+    {
+        $sentencia = $this->pdo->prepare(
+            'UPDATE tickets
+             SET tecnico_id = :tecnico_id, actualizado_en = :actualizado_en
+             WHERE id = :id',
+        );
+        $sentencia->execute([
             ':tecnico_id' => $tecnicoId,
-            ':observacion' => 'Ticket registrado',
-            ':creado_en' => $creadoEn,
+            ':actualizado_en' => $actualizadoEn,
+            ':id' => $ticketId,
         ]);
     }
 
