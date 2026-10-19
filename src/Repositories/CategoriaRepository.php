@@ -22,4 +22,13 @@ final class CategoriaRepository
 
         return $sentencia->fetchAll();
     }
+
+    /** RN-04: la categoría de un ticket nuevo debe existir en BD. */
+    public function existe(int $id): bool
+    {
+        $sentencia = $this->pdo->prepare('SELECT 1 FROM categorias WHERE id = :id');
+        $sentencia->execute([':id' => $id]);
+
+        return $sentencia->fetch() !== false;
+    }
 }

@@ -36,4 +36,31 @@ final class TecnicoRepository
 
         return $sentencia->fetchAll();
     }
+
+    /**
+     * Bloquea la fila del técnico (SELECT ... FOR UPDATE) dentro de la transacción
+     * de creación: serializa el chequeo del tope de carga (RN-05, §6.1).
+     *
+     * @return array<string, mixed>|null null si el id no existe.
+     */
+    public function bloquearPorId(int $id): ?array
+    {
+        $sentencia = $this->pdo->prepare('SELECT id, nombre, activo FROM tecnicos WHERE id = :id FOR UPDATE');
+        $sentencia->execute([':id' => $id]);
+        $fila = $sentencia->fetch();
+
+        return $fila === false ? null : $fila;
+    }
+
+    /** Tickets activos (ABIERTO/EN CURSO) del técnico: base del tope de carga (RN-05). */
+    public function contarActivos(int $tecnicoId): int
+    {
+        $sentencia = $this->pdo->prepare(
+            "SELECT COUNT(*) AS total FROM tickets
+             WHERE tecnico_id = :tecnico_id AND estado IN ('ABIERTO', 'EN CURSO')",
+        );
+        $sentencia->execute([':tecnico_id' => $tecnicoId]);
+
+        return (int) $sentencia->fetch()['total'];
+    }
 }

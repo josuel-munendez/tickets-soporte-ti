@@ -91,12 +91,24 @@ try {
 
     // Inyección manual de dependencias (§10 D): PDO → Repos → Services → Controllers.
     // Si la BD no responde, PDOException cae al catch global ⇒ 500 sin trazas.
-    $conexion = (new Database(Config::obtener('db')))->conexion();
-    $ticketService = new TicketService(new TicketRepository($conexion), new TecnicoRepository($conexion));
+    $database = new Database(Config::obtener('db'));
+    $conexion = $database->conexion();
+    $ticketRepository = new TicketRepository($conexion);
+    $tecnicoRepository = new TecnicoRepository($conexion);
+    $usuarioRepository = new UsuarioRepository($conexion);
+    $categoriaRepository = new CategoriaRepository($conexion);
+
+    $ticketService = new TicketService(
+        $ticketRepository,
+        $tecnicoRepository,
+        $usuarioRepository,
+        $categoriaRepository,
+        $database,
+    );
     $ticketController = new TicketController($ticketService);
-    $usuarioController = new UsuarioController(new UsuarioService(new UsuarioRepository($conexion)));
-    $tecnicoController = new TecnicoController(new TecnicoService(new TecnicoRepository($conexion)));
-    $categoriaController = new CategoriaController(new CategoriaService(new CategoriaRepository($conexion)));
+    $usuarioController = new UsuarioController(new UsuarioService($usuarioRepository));
+    $tecnicoController = new TecnicoController(new TecnicoService($tecnicoRepository));
+    $categoriaController = new CategoriaController(new CategoriaService($categoriaRepository));
 
     $router = new Router();
     $router->usarMiddleware(new ApiKeyMiddleware());
@@ -105,6 +117,7 @@ try {
     $router->agregar('GET', '/api/ping', static fn (): Response => Response::json(['status' => 'ok']));
 
     $router->agregar('GET', '/api/tickets', [$ticketController, 'listar']);
+    $router->agregar('POST', '/api/tickets', [$ticketController, 'crear']);
     $router->agregar('GET', '/api/tickets/{numero}', [$ticketController, 'detalle']);
     $router->agregar('GET', '/api/resumen', [$ticketController, 'resumen']);
     $router->agregar('GET', '/api/usuarios/{codigo}', [$usuarioController, 'buscar']);

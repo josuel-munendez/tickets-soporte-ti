@@ -5,17 +5,21 @@ namespace App\Services;
 
 use App\Domain\Constantes;
 use App\Domain\SlaCalculator;
+use App\Exceptions\ConflictoException;
 use App\Exceptions\NoEncontradoException;
 use App\Exceptions\ValidacionException;
+use App\Repositories\CategoriaRepository;
 use App\Repositories\TecnicoRepository;
 use App\Repositories\TicketRepository;
+use App\Repositories\UsuarioRepository;
+use App\Support\Database;
 use DateTimeImmutable;
 use DateTimeInterface;
 
 /**
- * Reglas de consulta de tickets (§3): no conoce HTTP ni ejecuta SQL — valida
- * los filtros, orquesta al TicketRepository y formatea la respuesta del
- * contrato (fechas ISO-8601 -05:00 y indicador SLA, §5 y RN-08).
+ * Reglas de tickets (§3): no conoce HTTP ni ejecuta SQL — valida la entrada,
+ * orquesta al TicketRepository dentro de transacciones (creación) y formatea la
+ * respuesta del contrato (fechas ISO-8601 -05:00 e indicador SLA, §5 y RN-08).
  */
 final class TicketService
 {
@@ -23,10 +27,165 @@ final class TicketService
     public const POR_PAGINA_DEFECTO = 10;
     public const POR_PAGINA_MAXIMO = 50; // §5: per_page máximo 50
 
+    private const DESCRIPCION_MINIMA = 20;  // RN-03
+    private const DESCRIPCION_MAXIMA = 1000; // RN-03
+
     public function __construct(
         private readonly TicketRepository $tickets,
         private readonly TecnicoRepository $tecnicos,
+        private readonly UsuarioRepository $usuarios,
+        private readonly CategoriaRepository $categorias,
+        private readonly Database $database,
     ) {
+    }
+
+    /**
+     * Crea un ticket ABIERTO con consecutivo seguro (RN-01) y su historial (RN-09),
+     * todo en una transacción (POST /api/tickets, §5).
+     *
+     * @param  array<string, mixed> $datos Body crudo del request.
+     * @return array<string, mixed> Detalle del ticket creado.
+     */
+    public function crear(array $datos): array
+    {
+        [$usuarioCodigo, $categoriaId, $descripcion, $prioridad, $tecnicoId] = $this->validarCreacion($datos);
+
+        // RN-02 / RN-04: existencia y vigencia antes de tomar bloqueos (decisión D2, plan fase 4).
+        $usuario = $this->usuarios->buscarPorCodigo($usuarioCodigo);
+        if ($usuario === null || (int) $usuario['activo'] !== 1) {
+            throw new ValidacionException('Datos inválidos.', ['usuario_codigo' => 'El usuario no existe o está inactivo.']);
+        }
+        if (!$this->categorias->existe($categoriaId)) {
+            throw new ValidacionException('Datos inválidos.', ['categoria_id' => 'La categoría no existe.']);
+        }
+
+        $ahora = new DateTimeImmutable('now');
+        $numero = $this->crearEnTransaccion(
+            (int) $usuario['id'],
+            $categoriaId,
+            $descripcion,
+            $prioridad,
+            $tecnicoId,
+            $ahora,
+        );
+
+        return $this->detalle($numero);
+    }
+
+    /**
+     * Transacción de creación (RN-01/RN-05/RN-09). Orden de bloqueos §6.1:
+     * técnico → consecutivo (el ticket aún no existe). Si el tope falla, el
+     * ROLLBACK deja el consecutivo sin quemar.
+     */
+    private function crearEnTransaccion(
+        int $usuarioId,
+        int $categoriaId,
+        string $descripcion,
+        string $prioridad,
+        int $tecnicoId,
+        DateTimeImmutable $ahora,
+    ): string {
+        return $this->database->transaction(function () use (
+            $usuarioId,
+            $categoriaId,
+            $descripcion,
+            $prioridad,
+            $tecnicoId,
+            $ahora,
+        ): string {
+            // 1) Bloquear la fila del técnico ANTES del consecutivo (evita deadlocks, §6.1).
+            $tecnico = $this->tecnicos->bloquearPorId($tecnicoId);
+            if ($tecnico === null || (int) $tecnico['activo'] !== 1) {
+                throw new ValidacionException('Datos inválidos.', ['tecnico_id' => 'El técnico no existe o está inactivo.']);
+            }
+
+            // 2) RN-05: tope de carga bajo el bloqueo del técnico.
+            if ($this->tecnicos->contarActivos($tecnicoId) >= Constantes::MAX_TICKETS_TECNICO) {
+                throw new ConflictoException(
+                    'El técnico alcanzó el máximo de tickets activos.',
+                    'TECNICO_AL_TOPE',
+                );
+            }
+
+            // 3) Consecutivo anual seguro (INSERT IGNORE + SELECT FOR UPDATE + UPDATE).
+            $anio = (int) $ahora->format('Y');
+            $numero = sprintf('TK-%d-%06d', $anio, $this->tickets->siguienteConsecutivo($anio));
+
+            // 4) RN-08: vence_en = creado_en + horas de la prioridad.
+            $vence = SlaCalculator::calcularVence($ahora, $prioridad);
+            $ticketId = $this->tickets->insertar([
+                'numero' => $numero,
+                'usuario_id' => $usuarioId,
+                'categoria_id' => $categoriaId,
+                'descripcion' => $descripcion,
+                'prioridad' => $prioridad,
+                'tecnico_id' => $tecnicoId,
+                'creado_en' => $ahora->format('Y-m-d H:i:s'),
+                'vence_en' => $vence->format('Y-m-d H:i:s'),
+            ]);
+
+            // 5) RN-09: historial inicial en la misma transacción.
+            $this->tickets->insertarHistorialCreacion($ticketId, $tecnicoId, $ahora->format('Y-m-d H:i:s'));
+
+            return $numero;
+        });
+    }
+
+    /**
+     * Valida el body de creación y junta TODOS los errores de formato en una
+     * sola respuesta 422 (decisión D4, CA-8, §5).
+     *
+     * @param  array<string, mixed> $datos
+     * @return array{0: string, 1: int, 2: string, 3: string, 4: int}
+     */
+    private function validarCreacion(array $datos): array
+    {
+        $errores = [];
+
+        $usuarioCodigo = is_string($datos['usuario_codigo'] ?? null) ? trim($datos['usuario_codigo']) : '';
+        if ($usuarioCodigo === '') {
+            $errores['usuario_codigo'] = 'El código del usuario es obligatorio.';
+        }
+
+        $categoriaId = $this->enteroRequerido($datos['categoria_id'] ?? null, 'categoria_id', $errores);
+        $tecnicoId = $this->enteroRequerido($datos['tecnico_id'] ?? null, 'tecnico_id', $errores);
+
+        $descripcion = is_string($datos['descripcion'] ?? null) ? trim($datos['descripcion']) : '';
+        $longitud = mb_strlen($descripcion);
+        if ($longitud < self::DESCRIPCION_MINIMA || $longitud > self::DESCRIPCION_MAXIMA) {
+            $errores['descripcion'] = 'La descripción debe tener entre '
+                . self::DESCRIPCION_MINIMA . ' y ' . self::DESCRIPCION_MAXIMA . ' caracteres.';
+        }
+
+        $prioridad = is_string($datos['prioridad'] ?? null) ? $datos['prioridad'] : '';
+        if (!in_array($prioridad, Constantes::PRIORIDADES, true)) {
+            $errores['prioridad'] = 'Valores permitidos: ' . implode(', ', Constantes::PRIORIDADES) . '.';
+        }
+
+        if ($errores !== []) {
+            throw new ValidacionException('Datos inválidos.', $errores);
+        }
+
+        return [$usuarioCodigo, $categoriaId, $descripcion, $prioridad, $tecnicoId];
+    }
+
+    /**
+     * Entero positivo obligatorio (acepta int o cadena numérica).
+     *
+     * @param array<string, string> $errores Se completa por referencia.
+     */
+    private function enteroRequerido(mixed $valor, string $campo, array &$errores): int
+    {
+        if (is_int($valor) && $valor > 0) {
+            return $valor;
+        }
+        if (is_string($valor) && preg_match('/^\d+$/', $valor) === 1 && (int) $valor > 0) {
+            return (int) $valor;
+        }
+
+        $errores[$campo] = 'Debe ser el id numérico.';
+
+        return 0;
     }
 
     /**

@@ -152,6 +152,75 @@ final class TicketRepository
     }
 
     /**
+     * Genera el siguiente consecutivo anual de forma segura ante concurrencia (RN-01, §6.1).
+     * SIEMPRE debe invocarse dentro de una transacción: INSERT IGNORE asegura la fila del
+     * año, SELECT ... FOR UPDATE serializa a los creadores simultáneos y el UPDATE avanza.
+     */
+    public function siguienteConsecutivo(int $anio): int
+    {
+        $this->pdo
+            ->prepare('INSERT IGNORE INTO consecutivos_ticket (anio, ultimo) VALUES (:anio, 0)')
+            ->execute([':anio' => $anio]);
+
+        $bloqueo = $this->pdo->prepare('SELECT ultimo FROM consecutivos_ticket WHERE anio = :anio FOR UPDATE');
+        $bloqueo->execute([':anio' => $anio]);
+        $siguiente = (int) $bloqueo->fetch()['ultimo'] + 1;
+
+        $this->pdo
+            ->prepare('UPDATE consecutivos_ticket SET ultimo = :ultimo WHERE anio = :anio')
+            ->execute([':ultimo' => $siguiente, ':anio' => $anio]);
+
+        return $siguiente;
+    }
+
+    /**
+     * Inserta un ticket nuevo. Nace SIEMPRE en ABIERTO y sin solución (RN-06, decisión D3).
+     *
+     * @param array<string, mixed> $ticket numero, usuario_id, categoria_id, descripcion,
+     *                                      prioridad, tecnico_id, creado_en, vence_en
+     */
+    public function insertar(array $ticket): int
+    {
+        $sentencia = $this->pdo->prepare(
+            'INSERT INTO tickets
+                (numero, usuario_id, categoria_id, descripcion, prioridad, tecnico_id, estado, creado_en, vence_en)
+             VALUES
+                (:numero, :usuario_id, :categoria_id, :descripcion, :prioridad, :tecnico_id, :estado, :creado_en, :vence_en)',
+        );
+        $sentencia->execute([
+            ':numero' => $ticket['numero'],
+            ':usuario_id' => $ticket['usuario_id'],
+            ':categoria_id' => $ticket['categoria_id'],
+            ':descripcion' => $ticket['descripcion'],
+            ':prioridad' => $ticket['prioridad'],
+            ':tecnico_id' => $ticket['tecnico_id'],
+            ':estado' => 'ABIERTO',
+            ':creado_en' => $ticket['creado_en'],
+            ':vence_en' => $ticket['vence_en'],
+        ]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /** Historial de creación en la MISMA transacción del ticket (RN-09, decisión D4). */
+    public function insertarHistorialCreacion(int $ticketId, int $tecnicoId, string $creadoEn): void
+    {
+        $sentencia = $this->pdo->prepare(
+            "INSERT INTO ticket_historial
+                (ticket_id, tipo_cambio, estado_anterior, estado_nuevo,
+                 tecnico_anterior_id, tecnico_nuevo_id, observacion, creado_en)
+             VALUES
+                (:ticket_id, 'CREACION', NULL, 'ABIERTO', NULL, :tecnico_id, :observacion, :creado_en)",
+        );
+        $sentencia->execute([
+            ':ticket_id' => $ticketId,
+            ':tecnico_id' => $tecnicoId,
+            ':observacion' => 'Ticket registrado',
+            ':creado_en' => $creadoEn,
+        ]);
+    }
+
+    /**
      * Condiciones estáticas + parámetros enlazados: ninguna variable se
      * concatena al SQL (§4.1); solo crece la lista de condiciones.
      *
