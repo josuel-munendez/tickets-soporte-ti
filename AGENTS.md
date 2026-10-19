@@ -265,7 +265,33 @@ La documentación vive en el repo (Markdown), usa diagramas como texto (Mermaid/
 
 ---
 
-## 14. Declaración de uso de IA (Para copiar al README final)
+## 14. Flujo de Trabajo con Git (GitFlow)
+
+Para garantizar un historial limpio, profesional y auditable (requisito de la prueba), el agente debe seguir estrictamente las reglas de GitFlow, incluso al trabajar en un proyecto individual.
+
+### Estructura de Ramas:
+*   `main`: Código en producción (estable). Solo recibe merges de `release/` o `hotfix/`.
+*   `develop`: Rama de integración principal. Todo el desarrollo converge aquí.
+*   `feature/*`: Ramas para nuevas funcionalidades o fases.
+*   `hotfix/*`: Ramas para correcciones urgentes (salen de `main`).
+*   `release/*`: Ramas para preparar una entrega (salen de `develop`).
+
+### Reglas de Actuación del Agente:
+1.  **Prohibido trabajar en `main` o `develop` directamente:** El agente nunca debe hacer `commit` directamente sobre estas ramas.
+2.  **Creación de ramas por fase:** Para cada fase del plan de trabajo (ver sección 9), el agente debe crear una rama desde `develop` con el formato `feature/fase-X-descripcion` (Ej: `feature/fase-2-schema-seed`, `feature/fase-4-post-tickets`).
+3.  **Convención de Commits:** Los mensajes deben seguir *Conventional Commits* (`feat:`, `fix:`, `docs:`, `test:`, `chore:`). Ejemplo: `feat(tickets): implementar POST con consecutivo seguro`.
+4.  **Integración (Merge):** Al terminar una fase y confirmar que funciona, el agente debe:
+    *   Cambiar a `develop`.
+    *   Hacer merge de la rama `feature/*` usando la bandera `--no-ff` (no fast-forward) para mantener la trazabilidad de la rama en el historial: `git merge --no-ff feature/fase-X-descripcion`.
+    *   Eliminar la rama de la funcionalidad (`git branch -d feature/...`).
+5.  **Prohibiciones:**
+    *   No usar `git push --force` ni `git reset --hard` sobre ramas compartidas (`main`, `develop`).
+    *   No dejar ramas huérfanas o basura al finalizar el proyecto.
+6.  **Cierre de Entrega (Release):** Para el entregable final, el agente creará la rama `release/v1.0.0`, hará el merge a `main`, etiquetará (`git tag -a v1.0.0 -m "Versión final de la prueba técnica"`) y volverá a integrar los cambios a `develop`.
+
+---
+
+## 15. Declaración de uso de IA (Para copiar al README final)
 
 > Este proyecto se desarrolló con apoyo de herramientas de IA (OpenCode, GitHub Copilot y asistentes de chat) para generar y revisar código y documentación, siguiendo una metodología Spec-Driven con `AGENTS.md` como reglas. Todo el código fue leído, probado y entendido por el autor, quien puede explicarlo y modificarlo en vivo. La bitácora está en `docs/ai-log.md`.
 ```
