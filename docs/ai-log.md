@@ -194,3 +194,28 @@ nuevo historial; `404` inexistente y `401` sin clave. Guards: TODO OK. BD restau
 - Flujo que consume el front (curl): crear (`TK-2026-000026`), resumen, lista filtrada, cerrar
   (`EN CURSO`→`CERRADO`, `sla=null`) y reasignar (`REASIGNACION`). Guards: TODO OK (tras reformular dos
   comentarios que contenían la palabra prohibida). BD restaurada con `seed.sql`.
+
+## 2026-10-19 — Fase 7: README y colección Postman / .http
+
+**Qué se pidió (usuario):** Continuar; el agente siguió con la Fase 7 (documentación de entrega).
+
+**Qué se generó (agente):**
+- `README.md`: descripción, stack, requisitos, instalación paso a paso (config, BD, `schema.sql`/`seed.sql`,
+  servidor embebido), tabla de los 9 endpoints, formato único de error, ejemplos `curl` de cada operación,
+  pruebas manuales de las reglas (401/404/405/409/422) y el bloque de concurrencia del consecutivo (RN-01),
+  estructura del proyecto, tabla de reglas RN-01…RN-09 con su ubicación en el código, `guards.sh` y la
+  **declaración de uso de IA** (§15 de AGENTS.md).
+- `postman/soporte-ti.http`: archivo `.http` (VS Code REST Client / JetBrains) con los 9 endpoints y 10 casos
+  de error etiquetados (E1…E10).
+- `postman/Soporte-TI.postman_collection.json`: colección Postman v2.1 importable (22 requests) con scripts de
+  aserción (status y `error.code`) y guardado automático de `{{numero}}` al crear.
+- `postman/Soporte-TI.local.postman_environment.json`: entorno `Local` con `base_url` y `api_key` (secreto).
+
+**Verificación:**
+- JSON de colección y entorno validados con `python3 -m json.tool` (válidos).
+- Casos de error ejecutados contra el servidor real y contrastados con el README:
+  401 sin clave y con clave mala (`NO_AUTORIZADO`), 405 `DELETE /api/tickets` (`METODO_NO_PERMITIDO`),
+  404 ticket inexistente y 404 usuario inactivo (`NO_ENCONTRADO`), 422 paginación
+  (`VALIDACION`, `fields.page`) y 422 crear inválido (`fields.descripcion` y `fields.prioridad`).
+- `scripts/guards.sh` en verde: el guard de secretos detectó `API_KEY="…"` en el README y se reformuló el
+  ejemplo a `MI_CLAVE` con valor placeholder (no es un secreto real, pero el guard es intencionalmente estricto).
