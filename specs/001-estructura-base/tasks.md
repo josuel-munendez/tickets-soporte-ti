@@ -10,7 +10,7 @@
 - [x] T3. Crear `src/Support/Database.php`: PDO estricto, DSN utf8mb4, `SET time_zone = '-05:00'`, `transaction(callable)`.
 - [x] T4. Crear `src/Exceptions/ApiException.php` (abstracta: estado, code, fields).
 - [x] T5. Crear `ValidacionException` (422), `NoEncontradoException` (404), `ConflictoException` (409 parametrizado).
-- [x] T6. Crear `src/Http/Request.php` (metodo, ruta, query, header, `json()` con 422 ante JSON malformado).
+- [x] T6. Crear `src/Http/Request.php` (metodo, ruta, parametro, header, `json()` con 422 ante JSON malformado).
 - [x] T7. Crear `src/Http/Response.php` (`json()`, `error()` formato único, `enviar()` con cabeceras + nosniff).
 - [x] T8. Crear `src/Http/Router.php` (agregar, middlewares, resolver con 404/405 + `Allow`).
 - [x] T9. Crear `src/Http/Middlewares/ApiKeyMiddleware.php` con `hash_equals` y fail-closed.

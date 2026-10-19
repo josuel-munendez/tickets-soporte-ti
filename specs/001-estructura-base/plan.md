@@ -65,7 +65,8 @@ return [
 - `ConflictoException`: 409, código parametrizado (`TRANSICION_INVALIDA`, `TECNICO_AL_TOPE`).
 
 ### `src/Http/Request.php`
-Construido desde superglobales: `metodo()`, `ruta()` (path sin query), `query(string $clave, mixed $defecto)`,
+Construido desde superglobales: `metodo()`, `ruta()` (path sin query), `parametro(string $clave, mixed $defecto)`
+(nombre elegido en fase 3 para no chocar con el patrón `->query(` del guard de capas),
 `header(string $nombre): ?string`, `json(): array` (body JSON; si está malformado lanza
 `ValidacionException` 422). No contiene lógica de negocio.
 
