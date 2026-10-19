@@ -59,6 +59,21 @@ php -S localhost:8080 -t public public/index.php
 
 Abre **http://localhost:8080/** para la SPA y **http://localhost:8080/api/ping** para la API.
 
+### Alternativa con Docker (opcional, +10 pts)
+
+```bash
+cp .env.example .env          # ajusta credenciales y API_KEY (el .env NO se versiona)
+docker compose up --build     # levanta MySQL 8.0 + PHP 8.1/Apache
+```
+
+La app queda en **http://localhost:8080/** (cambia `APP_PUERTO` en `.env` para otro puerto).
+MySQL ejecuta `database/schema.sql` y `database/seed.sql` automáticamente la primera vez que se crea
+el volumen de datos. El archivo `config/config.php` lo genera `docker/entrypoint.sh` desde las variables
+de entorno, así que ningún secreto se versiona. Para reiniciar de cero: `docker compose down -v`.
+
+> Con Apache, el enrutamiento al Front Controller lo hace `public/.htaccess` (mod_rewrite); en el
+> servidor embebido de PHP lo hace el propio `public/index.php`.
+
 ### Datos de prueba (`seed.sql`)
 - **10 usuarios** (`U001`…`U010`); `U010` está **inactivo** (para probar el rechazo).
 - **4 técnicos** (1 = Carlos Ramírez, 2 = Laura Gómez, 3 = Andrés Pérez; el 4, Marta Díaz, está **inactivo**).
@@ -81,6 +96,7 @@ Base URL: `/api`. **Todos** exigen el encabezado `X-API-Key`.
 | `GET` | `/api/usuarios/{codigo}` | Datos del solicitante por código. | `200` | `401`, `404` |
 | `GET` | `/api/tecnicos` | Técnicos activos con su carga actual. | `200` | `401` |
 | `GET` | `/api/resumen` | Métricas del tablero. | `200` | `401` |
+| `GET` | `/api/tickets/export.csv` | Exporta a CSV los tickets filtrados (mismos filtros que la lista). | `200` | `401`, `422` |
 | `GET` | `/api/categorias` | Catálogo de categorías. | `200` | `401` |
 
 **Formato único de error** (sin excepciones, incluso 404/405/500):
@@ -153,6 +169,12 @@ curl -s -H "X-API-Key: $MI_CLAVE" "$BASE/categorias"
 curl -s -H "X-API-Key: $MI_CLAVE" "$BASE/resumen"
 ```
 
+### Exportar a CSV (respeta los filtros)
+```bash
+curl -s -H "X-API-Key: $MI_CLAVE" \
+  "$BASE/tickets/export.csv?estado=EN%20CURSO&prioridad=Alta" -o tickets.csv
+```
+
 ---
 
 ## 6. Pruebas de las reglas de negocio (manuales)
@@ -210,18 +232,22 @@ Ambos incluyen los 9 endpoints y los casos de error (401, 404, 409, 422).
 ├── composer.json          # Autoload PSR-4 (App\ => src/) y PHPUnit
 ├── config/                # config.example.php (plantilla) / config.php (real, ignorado por Git)
 ├── database/              # schema.sql + seed.sql
-├── public/                # ÚNICA carpeta pública: index.php (front controller), app.html (SPA), assets/
+├── public/                # ÚNICA carpeta pública: index.php (front controller), app.html (SPA), .htaccess, assets/
 ├── src/
 │   ├── Controllers/       # HTTP delgado (lee Request, llama Service, responde JSON)
 │   ├── Services/          # Reglas de negocio y transacciones
 │   ├── Repositories/      # ÚNICO lugar con SQL (PDO preparado)
-│   ├── Domain/            # Clases puras: SlaCalculator, EstadoTicket, Constantes
+│   ├── Domain/            # Clases puras: SlaCalculator, EstadoTicket, Constantes, CsvExporter
 │   ├── Http/              # Router, Request, Response, Middlewares
 │   ├── Exceptions/        # Excepciones de dominio con código HTTP
 │   └── Support/           # Config, Database (PDO + transaction())
 ├── specs/                 # Spec-Driven Development (spec/plan/tasks por funcionalidad)
-├── tests/                 # Pruebas PHPUnit
-└── scripts/               # guards.sh (barreras automáticas)
+├── tests/                 # PHPUnit: Unit (dominio puro) e Integration (BD real)
+├── scripts/               # guards.sh (barreras automáticas)
+├── docker/                # entrypoint.sh (genera config.php desde el entorno)
+├── Dockerfile             # Imagen PHP 8.1 + Apache con el docroot en public/
+├── docker-compose.yml     # app + MySQL 8.0 (schema/seed como initdb)
+└── .env.example           # Plantilla de variables de entorno para Docker (sin secretos)
 ```
 
 ---
@@ -242,7 +268,27 @@ Ambos incluyen los 9 endpoints y los casos de error (401, 404, 409, 422).
 
 ---
 
-## 10. Calidad y barreras automáticas
+## 10. Pruebas automatizadas (PHPUnit)
+
+```bash
+composer install          # instala PHPUnit (dependencia de desarrollo)
+./vendor/bin/phpunit      # o: composer test
+```
+
+La suite tiene dos grupos:
+
+- **`Unit`** (dominio puro, sin base de datos): máquina de estados (RN-06), SLA (RN-08),
+  tope de carga (RN-05) y el generador CSV.
+- **`Integration`** (contra MySQL con `config/config.php`): flujo completo ABIERTO→EN CURSO→CERRADO
+  con historial, 409 al saltar de estado, 422 al cerrar sin solución, 422 con usuario inactivo y
+  verificación de que el **tope no quema el consecutivo** (ROLLBACK). Si no hay BD, este grupo se
+  **omite** en vez de fallar.
+
+Las pruebas de integración crean sus propios datos y los eliminan al terminar (no ensucian el `seed`).
+
+---
+
+## 11. Calidad y barreras automáticas
 
 ```bash
 bash scripts/guards.sh
@@ -254,7 +300,7 @@ si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO
 
 ---
 
-## 11. Declaración de uso de IA
+## 12. Declaración de uso de IA
 
 > Este proyecto se desarrolló con apoyo de herramientas de IA (OpenCode, GitHub Copilot y
 > asistentes de chat) para generar y revisar código y documentación, siguiendo una metodología
@@ -263,6 +309,6 @@ si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO
 
 ---
 
-## 12. Autor
+## 13. Autor
 
 Prueba técnica — Aprendiz de Soporte TI, **MEGACOMERCIAL SAS**. Zona horaria: `America/Bogota`.

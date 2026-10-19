@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Domain\Constantes;
+use App\Domain\CsvExporter;
 use App\Domain\EstadoTicket;
 use App\Domain\SlaCalculator;
 use App\Exceptions\ConflictoException;
@@ -336,16 +337,9 @@ final class TicketService
     {
         $pagina = $this->entero($filtros, 'page', self::PAGINA_DEFECTO, 1, null);
         $porPagina = $this->entero($filtros, 'per_page', self::POR_PAGINA_DEFECTO, 1, self::POR_PAGINA_MAXIMO);
-        $estado = $this->enum($filtros, 'estado', Constantes::ESTADOS);
-        $prioridad = $this->enum($filtros, 'prioridad', Constantes::PRIORIDADES);
-        $tecnico = $this->tecnico($filtros);
-        $q = $this->texto($filtros, 'q');
+        $criterios = $this->criteriosFiltros($filtros);
 
-        $resultado = $this->tickets->listar(
-            ['estado' => $estado, 'prioridad' => $prioridad, 'tecnico' => $tecnico, 'q' => $q],
-            $pagina,
-            $porPagina,
-        );
+        $resultado = $this->tickets->listar($criterios, $pagina, $porPagina);
 
         $ahora = new DateTimeImmutable('now');
         $data = array_map(fn (array $fila): array => $this->formatoTicket($fila, $ahora), $resultado['filas']);
@@ -357,6 +351,60 @@ final class TicketService
                 'per_page' => $porPagina,
                 'total' => $resultado['total'],
             ],
+        ];
+    }
+
+    /**
+     * Exporta a CSV los tickets que cumplen los MISMOS filtros de la lista
+     * (sin paginar). Devuelve las cabeceras HTTP y el cuerpo CSV listo.
+     *
+     * @param  array<string, mixed> $filtros
+     * @return array{cuerpo: string, nombre: string}
+     */
+    public function exportarCsv(array $filtros): array
+    {
+        $criterios = $this->criteriosFiltros($filtros);
+        $filas = $this->tickets->listarParaExportar($criterios);
+
+        $columnas = ['numero', 'usuario', 'categoria', 'prioridad', 'tecnico', 'estado', 'creado', 'vence', 'sla'];
+        $encabezados = ['Número', 'Usuario', 'Categoría', 'Prioridad', 'Técnico', 'Estado', 'Creado', 'Vence', 'SLA'];
+
+        $ahora = new DateTimeImmutable('now');
+        $datos = array_map(function (array $fila) use ($ahora): array {
+            $formateada = $this->formatoTicket($fila, $ahora);
+
+            return [
+                'numero' => $formateada['numero'],
+                'usuario' => $formateada['usuario'],
+                'categoria' => $formateada['categoria'],
+                'prioridad' => $formateada['prioridad'],
+                'tecnico' => $formateada['tecnico'],
+                'estado' => $formateada['estado'],
+                'creado' => $formateada['creado'],
+                'vence' => $formateada['vence'],
+                'sla' => $formateada['sla'] ?? '',
+            ];
+        }, $filas);
+
+        return [
+            'cuerpo' => CsvExporter::generar($encabezados, $datos, $columnas),
+            'nombre' => 'tickets_' . (new DateTimeImmutable('now'))->format('Ymd_His') . '.csv',
+        ];
+    }
+
+    /**
+     * Valida y normaliza los filtros comunes a la lista y a la exportación.
+     *
+     * @param  array<string, mixed> $filtros
+     * @return array{estado: ?string, prioridad: ?string, tecnico: ?int, q: ?string}
+     */
+    private function criteriosFiltros(array $filtros): array
+    {
+        return [
+            'estado' => $this->enum($filtros, 'estado', Constantes::ESTADOS),
+            'prioridad' => $this->enum($filtros, 'prioridad', Constantes::PRIORIDADES),
+            'tecnico' => $this->tecnico($filtros),
+            'q' => $this->texto($filtros, 'q'),
         ];
     }
 

@@ -61,4 +61,17 @@ final class TicketController
     {
         return Response::json($this->tickets->resumen());
     }
+
+    /** GET /api/tickets/export.csv — exporta a CSV los tickets filtrados. */
+    public function exportarCsv(Request $peticion): Response
+    {
+        $exportacion = $this->tickets->exportarCsv([
+            'estado' => $peticion->parametro('estado'),
+            'prioridad' => $peticion->parametro('prioridad'),
+            'tecnico' => $peticion->parametro('tecnico'),
+            'q' => $peticion->parametro('q'),
+        ]);
+
+        return Response::descarga($exportacion['cuerpo'], 'text/csv; charset=utf-8', $exportacion['nombre']);
+    }
 }

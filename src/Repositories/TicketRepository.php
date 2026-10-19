@@ -73,6 +73,36 @@ final class TicketRepository
         return ['filas' => $listado->fetchAll(), 'total' => $total];
     }
 
+    /**
+     * Filas completas para exportar (sin paginar), con los MISMOS filtros de la
+     * lista. Devuelve todas las columnas que la tabla y el CSV necesitan.
+     *
+     * @param  array<string, mixed> $filtros
+     * @return list<array<string, mixed>>
+     */
+    public function listarParaExportar(array $filtros): array
+    {
+        [$condiciones, $parametros] = $this->condicionesFiltros($filtros);
+        $donde = implode(' AND ', $condiciones);
+
+        $sentencia = $this->pdo->prepare(
+            "SELECT t.numero, t.prioridad, t.estado, t.descripcion, t.creado_en, t.vence_en, t.cerrado_en,
+                    u.codigo  AS usuario_codigo,
+                    u.nombre  AS usuario_nombre,
+                    c.nombre  AS categoria_nombre,
+                    te.nombre AS tecnico_nombre
+             FROM tickets t
+             JOIN usuarios u   ON u.id = t.usuario_id
+             JOIN categorias c ON c.id = t.categoria_id
+             JOIN tecnicos te  ON te.id = t.tecnico_id
+             WHERE {$donde}
+             " . self::ORDEN,
+        );
+        $sentencia->execute($parametros);
+
+        return $sentencia->fetchAll();
+    }
+
     /** @return array<string, mixed>|null null si el número no existe. */
     public function buscarPorNumero(string $numero): ?array
     {

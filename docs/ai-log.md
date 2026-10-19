@@ -219,3 +219,64 @@ nuevo historial; `404` inexistente y `401` sin clave. Guards: TODO OK. BD restau
   (`VALIDACION`, `fields.page`) y 422 crear inválido (`fields.descripcion` y `fields.prioridad`).
 - `scripts/guards.sh` en verde: el guard de secretos detectó `API_KEY="…"` en el README y se reformuló el
   ejemplo a `MI_CLAVE` con valor placeholder (no es un secreto real, pero el guard es intencionalmente estricto).
+
+## 2026-10-19 — Fase 8 (parte 1): PHPUnit y export CSV
+
+**Qué se pidió (usuario):** Continuar con la Fase 8 (extras); aprobó correr `composer install`
+y dejar Docker para el final de la fase.
+
+**Qué se generó (agente):**
+- `phpunit.xml` (PHPUnit 13.4) con dos suites: `Unit` (dominio puro) e `Integration` (BD real).
+- `tests/Unit/EstadoTicketTest.php` (RN-06), `SlaCalculatorTest.php` (RN-08) y `TopeTecnicoTest.php` (RN-05):
+  transiciones válidas e inválidas (saltar/retroceder/reabrir), umbrales de SLA
+  (EN_TIEMPO/POR_VENCER/VENCIDO/null) y el borde del tope (4 recibe, 5 no), con data providers.
+- `tests/Integration/IntegrationTestCase.php` + `FlujoTicketTest.php`: flujo real contra la BD
+  (crear → EN CURSO → CERRADO con historial), 409 por salto de estado, 422 al cerrar sin solución,
+  422 con usuario inactivo y **tope sin quemar el consecutivo** (ROLLBACK). Limpia lo que crea y,
+  sin `config.php`/MySQL, se omite en vez de fallar.
+- `src/Domain/CsvExporter.php`: generador CSV puro (RFC 4180) con **neutralización de fórmulas**
+  (CSV injection). `tests/Unit/CsvExporterTest.php` lo cubre.
+- Exportación CSV extremo a extremo: `TicketRepository::listarParaExportar()` (mismos filtros, sin paginar),
+  `TicketService::exportarCsv()` (reutiliza la validación de filtros vía `criteriosFiltros()`),
+  `Response::descarga()` (cuerpo no-JSON con su MIME) y la ruta `GET /api/tickets/export.csv`.
+- SPA: botón «Exportar CSV» que descarga con los filtros activos; `Api.exportarCsv()` usa `fetch`
+  con `X-API-Key` (un `<a href>` no enviaría el encabezado).
+- `composer.json`: autoload-dev `Tests\ => tests/`. `.gitignore`: `.phpunit.cache/`.
+
+**Decisiones (para sustentación):**
+- Las pruebas de dominio no tocan la BD: el «ahora» del SLA entra por parámetro (clase pura).
+- La integración se autocontiene (crea y borra sus datos) y se omite si no hay BD, para no ensuciar el seed.
+- El consecutivo se verifica con ROLLBACK: al fallar el tope, `ultimo` no avanza.
+- CSV con `;` y `\r\n`; celdas entrecomilladas y fórmulas neutralizadas con apóstrofo.
+
+**Verificación:**
+- `./vendor/bin/phpunit` → **38 tests, 65 aserciones, OK** (33 unit + 5 integración).
+- `GET /api/tickets/export.csv?prioridad=Alta` → `200 text/csv`, `Content-Disposition: attachment`,
+  8 filas + encabezado; sin clave → `401` JSON.
+- `scripts/guards.sh` → TODO OK. BD restaurada con `seed.sql` tras las pruebas.
+
+## 2026-10-19 — Fase 8 (parte 2): Docker
+
+**Qué se pidió (usuario):** Terminar la Fase 8 con Docker (se dejó para el final, como se acordó).
+
+**Qué se generó (agente):**
+- `Dockerfile`: imagen `php:8.1-apache` con `pdo_mysql`, docroot en `public/`, `AllowOverride All`
+  para el `.htaccess`, ini con `date.timezone = America/Bogota` y `display_errors = 0`, y `composer install --no-dev`.
+- `docker-compose.yml`: servicios `app` (Apache+PHP) y `db` (`mysql:8.0`), con `schema.sql` y `seed.sql`
+  montados como scripts de initdb, `healthcheck` de MySQL y volúmenes para datos y logs.
+- `docker/entrypoint.sh`: genera `config/config.php` desde variables de entorno (el secreto no se versiona)
+  y espera a que MySQL acepte conexiones antes de arrancar Apache.
+- `.env.example` (plantilla versionada) y `.dockerignore` (no copia `vendor/`, `config/config.php`, `.env`, tests).
+- `public/.htaccess`: reescribe todo al Front Controller para Apache (el servidor embebido no lo necesitaba).
+- `public/index.php`: la inyección de la API key en la SPA ahora aplica también bajo Apache (antes solo `cli-server`).
+- `README.md`: sección de instalación con Docker y estructura del proyecto actualizada.
+
+**Decisión relevante:** el nombre de los contenedores chocaba con el MySQL de desarrollo local
+(`tickets-db`); el compose es autocontenido y se validó levantándolo en otro puerto (`APP_PUERTO`).
+
+**Verificación (docker compose up --build en el puerto 8090):**
+- `GET /api/ping` con clave → `{"status":"ok"}`; sin clave → `401`.
+- SPA servida con la API key inyectada (`apiKey: "cambia-esta-clave-de-api"`).
+- `GET /api/tickets` → lista con datos del seed; `GET /api/tickets/export.csv?prioridad=Alta` → `text/csv`.
+- Transición inválida ABIERTO→CERRADO → `409`. Assets estáticos servidos por Apache (`api.js` → `text/javascript`).
+- Al terminar: `docker compose down -v` y se restauró el contenedor de desarrollo. Guards: TODO OK.
