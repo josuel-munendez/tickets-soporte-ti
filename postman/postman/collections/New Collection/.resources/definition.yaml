@@ -1,0 +1,11 @@
+$kind: collection
+name: Soporte TI - Megacomercial
+auth:
+  type: apikey
+  credentials:
+    - key: key
+      value: X-API-Key
+    - key: value
+      value: '{{api_key}}'
+    - key: in
+      value: header
