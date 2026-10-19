@@ -64,7 +64,11 @@ docker compose up --build     \# levanta MySQL 8.0 + PHP 8.1/Apache
 
 La app queda en **http://localhost:8080/** (cambia `APP\_PUERTO` en `.env` para otro puerto). MySQL ejecuta `database/schema.sql` y `database/seed.sql` automáticamente la primera vez que se crea el volumen de datos. El archivo `config/config.php` lo genera `docker/entrypoint.sh` desde las variables de entorno, así que ningún secreto se versiona. Para reiniciar de cero: `docker compose down -v`.
 
-> Con Apache, el enrutamiento al Front Controller lo hace `public/.htaccess` (mod\_rewrite); en el servidor embebido de PHP lo hace el propio `public/index.php`.
+> Con Docker **no** hacen falta los pasos manuales de `mysql` de arriba: el contenedor crea la base, ejecuta el esquema y carga el seed por ti.
+>
+> Los contenedores se nombran `<proyecto>-db-1` / `<proyecto>-app-1` (el compose no fija `container_name`), así no chocan con otros contenedores de tu máquina. Si ya habías levantado la app con una versión previa, limpia con `docker compose down -v` antes de volver a subir.
+
+> Con Apache, el enrutamiento al Front Controller lo hace `public/.htaccess` (mod\_rewrite); en el servidor embebido de PHP lo hace el propio `public/index.php`.
 
 ### Datos de prueba (`seed.sql`)
 
