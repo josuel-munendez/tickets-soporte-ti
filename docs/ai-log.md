@@ -135,3 +135,30 @@ tope de carga y SLA — con commits por fase.
   tener 20 cupos) → **20×201, 20 números únicos y consecutivos (26–45), consecutivo final 45 sin
   saltos, 0 duplicados**. BD restaurada con `seed.sql` después de la prueba.
 - Guards: TODO OK.
+
+## 2026-10-19 — Fase 5: Cambio de estado y reasignación (PATCH)
+
+**Qué se pidió (usuario):** Implementar la Fase 5 — PATCH de estado y de técnico — con commits por fase.
+
+**Qué se generó (agente):**
+- Specs: `specs/005-patch-estado-tecnico/{spec,plan,tasks}.md`.
+- `Domain/EstadoTicket.php`: máquina de estados como DATOS (`ABIERTO→EN CURSO→CERRADO`, CERRADO final),
+  con `esValido`, `siguiente` y `permiteTransicion` (§10 O).
+- `TicketRepository`: `bloquearPorNumero` (`SELECT…FOR UPDATE`), `actualizarEstado`, `actualizarTecnico` e
+  `insertarHistorial(evento)` **genérico** (reemplaza `insertarHistorialCreacion`; DRY entre creación,
+  cambio de estado y reasignación).
+- `TicketService::cambiarEstado` (422 estado desconocido / 422 cierre sin observación / 409 transición ilegal)
+  y `TicketService::reasignarTecnico` (409 si CERRADO, 422 técnico inválido, 409 tope, no-op si es el mismo).
+- `TicketController::cambiarEstado` y `reasignarTecnico`; rutas PATCH registradas en `index.php`.
+
+**Decisiones (para sustentación):**
+- Estado desconocido → 422 (validación de entrada); transición ilegal → 409 (conflicto con el estado actual).
+- Reasignar un CERRADO → `409 TRANSICION_INVALIDA` (RN-07 fija 409; el contrato no define otro código de 409).
+- Reasignar al MISMO técnico → no-op 200 (RN-05: no cuenta) sin ruido en el historial.
+- Orden de bloqueos ticket → técnico (§6.1); el historial se inserta en la misma transacción (RN-09).
+
+**Verificación (curl + jq, BD sembrada):** ABIERTO→CERRADO y EN CURSO→ABIERTO → `409`; estado `PENDIENTE`
+→ `422`; cerrar sin observación → `422 fields.observacion`; cerrar con solución → `200` (`sla=null`,
+`solucion` y `cerrado_en` guardados); reasignación a técnico con cupo → `200 REASIGNACION`; reasignar a un
+CERRADO → `409`; reasignar a técnico en el tope (5) → `409 TECNICO_AL_TOPE`; mismo técnico → `200` sin
+nuevo historial; `404` inexistente y `401` sin clave. Guards: TODO OK. BD restaurada con `seed.sql`.
