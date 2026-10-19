@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soporte TI — MEGACOMERCIAL SAS</title>
+  <link rel="stylesheet" href="assets/css/estilos.css">
+  <!-- Servida por PHP con la clave real inyectada; como archivo estático queda el marcador
+       y la SPA pedirá la API key en pantalla (assets/js/api.js). -->
+  <script>window.APP_CONFIG = { apiKey: "__CLAVE_API__" };</script>
+</head>
+<body>
+  <header class="cabecera">
+    <div class="cabecera__marca">
+      <span class="logo">TI</span>
+      <div>
+        <h1>Soporte Técnico</h1>
+        <p>MEGACOMERCIAL SAS · Mesa de ayuda interna</p>
+      </div>
+    </div>
+    <button id="btn-nuevo" class="btn btn--primario" type="button">+ Nuevo ticket</button>
+  </header>
+
+  <main class="contenido">
+    <section id="tablero" class="tablero" aria-label="Resumen">
+      <div class="tarjeta tarjeta--cargando">Cargando tablero…</div>
+    </section>
+
+    <section class="panel" aria-label="Filtros y listado">
+      <form id="filtros" class="filtros" autocomplete="off">
+        <label class="campo">
+          <span>Estado</span>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option>ABIERTO</option>
+            <option>EN CURSO</option>
+            <option>CERRADO</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Prioridad</span>
+          <select id="filtro-prioridad">
+            <option value="">Todas</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Técnico</span>
+          <select id="filtro-tecnico"><option value="">Todos</option></select>
+        </label>
+        <label class="campo campo--crece">
+          <span>Buscar</span>
+          <input id="filtro-q" type="search" placeholder="Número o nombre de usuario…">
+        </label>
+        <button id="btn-limpiar" class="btn" type="button">Limpiar</button>
+        <button id="btn-exportar" class="btn" type="button">Exportar CSV</button>
+      </form>
+
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Número</th><th>Usuario</th><th>Categoría</th><th>Prioridad</th>
+              <th>Técnico</th><th>Estado</th><th>Creación</th><th>SLA</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-cuerpo">
+            <tr><td colspan="8" class="vacio">Cargando tickets…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="paginacion">
+        <button id="btn-prev" class="btn" type="button">‹ Anterior</button>
+        <span id="pagina-info" class="paginacion__info"></span>
+        <button id="btn-next" class="btn" type="button">Siguiente ›</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Detalle del ticket -->
+  <dialog id="modal-detalle" class="modal">
+    <div class="modal__caja">
+      <header class="modal__cabecera">
+        <h2 id="detalle-titulo">Ticket</h2>
+        <button class="btn btn--icono" type="button" data-cerrar>✕</button>
+      </header>
+      <div id="detalle-cuerpo" class="modal__cuerpo"></div>
+      <footer class="modal__acciones">
+        <div class="accion">
+          <label class="campo">
+            <span>Cambiar estado</span>
+            <select id="detalle-estado"></select>
+          </label>
+          <label class="campo">
+            <span>Observación / solución</span>
+            <textarea id="detalle-observacion" rows="2" placeholder="Requerida al cerrar"></textarea>
+          </label>
+          <button id="btn-cambiar-estado" class="btn btn--primario" type="button">Aplicar estado</button>
+        </div>
+        <div class="accion">
+          <label class="campo">
+            <span>Reasignar técnico</span>
+            <select id="detalle-tecnico"></select>
+          </label>
+          <button id="btn-reasignar" class="btn" type="button">Reasignar</button>
+        </div>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Nuevo ticket -->
+  <dialog id="modal-nuevo" class="modal">
+    <div class="modal__caja">
+      <header class="modal__cabecera">
+        <h2>Registrar ticket</h2>
+        <button class="btn btn--icono" type="button" data-cerrar>✕</button>
+      </header>
+      <form id="form-nuevo" class="modal__cuerpo formulario" autocomplete="off">
+        <label class="campo">
+          <span>Código de usuario *</span>
+          <input id="nuevo-usuario" type="text" placeholder="Ej. U001" required>
+          <small id="nuevo-usuario-info" class="ayuda"></small>
+        </label>
+        <div class="rejilla">
+          <label class="campo">
+            <span>Categoría *</span>
+            <select id="nuevo-categoria" required></select>
+          </label>
+          <label class="campo">
+            <span>Prioridad *</span>
+            <select id="nuevo-prioridad" required>
+              <option value="Alta">Alta (4 h)</option>
+              <option value="Media" selected>Media (24 h)</option>
+              <option value="Baja">Baja (72 h)</option>
+            </select>
+          </label>
+        </div>
+        <label class="campo">
+          <span>Técnico *</span>
+          <select id="nuevo-tecnico" required></select>
+        </label>
+        <label class="campo">
+          <span>Descripción * (20–1000 caracteres)</span>
+          <textarea id="nuevo-descripcion" rows="4" required></textarea>
+          <small id="nuevo-descripcion-contador" class="ayuda"></small>
+        </label>
+        <p id="form-error" class="error"></p>
+      </form>
+      <footer class="modal__acciones modal__acciones--fin">
+        <button class="btn" type="button" data-cerrar>Cancelar</button>
+        <button id="btn-registrar" class="btn btn--primario" type="submit" form="form-nuevo">Registrar</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <div id="aviso" class="aviso" role="alert" aria-live="polite"></div>
+
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/tabla.js"></script>
+  <script src="assets/js/form.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      window.Ui.iniciar();
+      window.Formulario.iniciar();
+      window.Tabla.iniciar();
+      window.Ui.cargarResumen();
+      window.Tabla.cargar();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,349 @@
+openapi: 3.0.3
+info:
+  title: API — Sistema de Tickets de Soporte TI
+  description: |
+    API REST del sistema de tickets de Soporte TI de **MEGACOMERCIAL SAS**.
+    Autenticación por API key (`X-API-Key`), respuestas JSON y **formato único de error**.
+    Zona horaria: `America/Bogota` (fechas en ISO 8601 con offset).
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api
+    description: Servidor de desarrollo
+tags:
+  - name: Tickets
+  - name: Catálogos
+  - name: Sistema
+
+paths:
+  /ping:
+    get:
+      tags: [Sistema]
+      summary: Health check (no exige clave)
+      security: []
+      responses:
+        '200':
+          description: Servicio en línea
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+  /tickets:
+    get:
+      tags: [Tickets]
+      summary: Lista paginada y filtrable de tickets
+      parameters:
+        - { name: estado,    in: query, schema: { type: string, enum: [ABIERTO, 'EN CURSO', CERRADO] } }
+        - { name: prioridad, in: query, schema: { type: string, enum: [Alta, Media, Baja] } }
+        - { name: tecnico,   in: query, schema: { type: integer } }
+        - { name: q,         in: query, schema: { type: string }, description: Número de ticket o nombre de usuario }
+        - { name: page,      in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: per_page,  in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+      responses:
+        '200':
+          description: Página de tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/TicketResumen' }
+                  meta: { $ref: '#/components/schemas/Paginacion' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '422': { $ref: '#/components/responses/Validacion' }
+    post:
+      tags: [Tickets]
+      summary: Crea un ticket con consecutivo seguro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TicketCrear' }
+      responses:
+        '201':
+          description: Ticket creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TicketDetalle' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/Validacion' }
+
+  /tickets/export.csv:
+    get:
+      tags: [Tickets]
+      summary: Exporta a CSV los tickets filtrados (mismos filtros, sin paginar)
+      parameters:
+        - { name: estado,    in: query, schema: { type: string, enum: [ABIERTO, 'EN CURSO', CERRADO] } }
+        - { name: prioridad, in: query, schema: { type: string, enum: [Alta, Media, Baja] } }
+        - { name: tecnico,   in: query, schema: { type: integer } }
+        - { name: q,         in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Archivo CSV
+          content:
+            text/csv:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '422': { $ref: '#/components/responses/Validacion' }
+
+  /tickets/{numero}:
+    get:
+      tags: [Tickets]
+      summary: Detalle del ticket con su historial completo
+      parameters:
+        - { name: numero, in: path, required: true, schema: { type: string, example: TK-2026-000042 } }
+      responses:
+        '200':
+          description: Detalle
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TicketDetalle' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /tickets/{numero}/estado:
+    patch:
+      tags: [Tickets]
+      summary: Cambia el estado del ticket (ABIERTO ➔ EN CURSO ➔ CERRADO)
+      parameters:
+        - { name: numero, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { type: string, enum: [ABIERTO, 'EN CURSO', CERRADO] }
+                observacion: { type: string, description: Obligatoria al cerrar (solución aplicada) }
+      responses:
+        '200':
+          description: Ticket actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TicketDetalle' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/Validacion' }
+
+  /tickets/{numero}/tecnico:
+    patch:
+      tags: [Tickets]
+      summary: Reasigna el técnico del ticket
+      parameters:
+        - { name: numero, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tecnico_id]
+              properties:
+                tecnico_id: { type: integer }
+      responses:
+        '200':
+          description: Ticket reasignado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TicketDetalle' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/Validacion' }
+
+  /usuarios/{codigo}:
+    get:
+      tags: [Catálogos]
+      summary: Busca un solicitante por código
+      parameters:
+        - { name: codigo, in: path, required: true, schema: { type: string, example: U001 } }
+      responses:
+        '200':
+          description: Datos del solicitante
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /tecnicos:
+    get:
+      tags: [Catálogos]
+      summary: Lista técnicos activos con su carga actual
+      responses:
+        '200':
+          description: Lista de técnicos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Tecnico' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /categorias:
+    get:
+      tags: [Catálogos]
+      summary: Catálogo de categorías
+      responses:
+        '200':
+          description: Lista de categorías
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Categoria' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /resumen:
+    get:
+      tags: [Catálogos]
+      summary: Métricas del tablero
+      responses:
+        '200':
+          description: Resumen
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Resumen' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    TicketResumen:
+      type: object
+      properties:
+        numero:         { type: string, example: TK-2026-000042 }
+        usuario:        { type: string }
+        usuario_codigo: { type: string }
+        categoria:      { type: string }
+        prioridad:      { type: string, enum: [Alta, Media, Baja] }
+        tecnico:        { type: string }
+        tecnico_id:     { type: integer }
+        estado:         { type: string, enum: [ABIERTO, 'EN CURSO', CERRADO] }
+        creado:         { type: string, format: date-time }
+        vence:          { type: string, format: date-time }
+        sla:            { type: string, nullable: true, enum: [EN_TIEMPO, POR_VENCER, VENCIDO, null] }
+
+    TicketDetalle:
+      allOf:
+        - $ref: '#/components/schemas/TicketResumen'
+        - type: object
+          properties:
+            descripcion: { type: string }
+            solucion:    { type: string, nullable: true }
+            cerrado:     { type: string, format: date-time, nullable: true }
+            historial:
+              type: array
+              items: { $ref: '#/components/schemas/EventoHistorial' }
+
+    TicketCrear:
+      type: object
+      required: [usuario_codigo, categoria_id, descripcion, prioridad, tecnico_id]
+      properties:
+        usuario_codigo: { type: string, example: U001 }
+        categoria_id:   { type: integer, example: 1 }
+        descripcion:    { type: string, minLength: 20, maxLength: 1000 }
+        prioridad:      { type: string, enum: [Alta, Media, Baja] }
+        tecnico_id:     { type: integer, example: 1 }
+
+    EventoHistorial:
+      type: object
+      properties:
+        fecha:            { type: string, format: date-time }
+        tipo_cambio:      { type: string, enum: [CREACION, ESTADO, REASIGNACION] }
+        estado_anterior:  { type: string, nullable: true }
+        estado_nuevo:     { type: string }
+        tecnico_anterior: { type: string, nullable: true }
+        tecnico_nuevo:    { type: string, nullable: true }
+        observacion:      { type: string, nullable: true }
+
+    Usuario:
+      type: object
+      properties:
+        codigo: { type: string }
+        nombre: { type: string }
+        cargo:  { type: string }
+        area:   { type: string }
+
+    Tecnico:
+      type: object
+      properties:
+        id:           { type: integer }
+        nombre:       { type: string }
+        carga_activa: { type: integer }
+        disponible:   { type: boolean }
+
+    Categoria:
+      type: object
+      properties:
+        id:     { type: integer }
+        nombre: { type: string }
+
+    Resumen:
+      type: object
+      properties:
+        por_estado: { type: object, additionalProperties: { type: integer } }
+        vencidos:   { type: integer }
+        carga_por_tecnico:
+          type: array
+          items: { $ref: '#/components/schemas/Tecnico' }
+
+    Paginacion:
+      type: object
+      properties:
+        page:     { type: integer }
+        per_page: { type: integer }
+        total:    { type: integer }
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:    { type: string }
+            message: { type: string }
+            fields:  { type: object, additionalProperties: { type: string } }
+
+  responses:
+    NoAutorizado:
+      description: Falta la API key o es inválida
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoEncontrado:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Validacion:
+      description: Datos inválidos (422)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflicto:
+      description: Conflicto de regla de negocio (409)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+security:
+  - ApiKeyAuth: []

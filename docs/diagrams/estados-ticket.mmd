@@ -1,0 +1,10 @@
+# Máquina de estados del ticket (RN-06). Fuente: docs/05-reglas-negocio.md
+stateDiagram-v2
+    [*] --> ABIERTO : POST /api/tickets
+    ABIERTO --> EN_CURSO : PATCH .../estado
+    EN_CURSO --> CERRADO : PATCH .../estado (exige observación)
+    CERRADO --> [*]
+
+    ABIERTO --> CERRADO : ✗ 409 TRANSICION_INVALIDA
+    EN_CURSO --> ABIERTO : ✗ 409
+    CERRADO --> EN_CURSO : ✗ 409

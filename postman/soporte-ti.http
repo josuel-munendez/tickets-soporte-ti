@@ -1,0 +1,154 @@
+###############################################################################
+# Sistema de Tickets de Soporte TI - MEGACOMERCIAL SAS
+# Pruebas manuales de la API. Compatible con VS Code (REST Client) y JetBrains.
+#
+# Ajusta las variables de abajo y ejecuta cada bloque con "Send Request".
+###############################################################################
+
+@base_url = http://localhost:8080/api
+@api_key = mi-clave-secreta-123
+
+### 0. Ping (sin /api key: confirma que el servidor responde)
+GET {{base_url}}/ping
+
+### 1. Listar tickets (paginado)
+GET {{base_url}}/tickets?page=1&per_page=10
+X-API-Key: {{api_key}}
+
+### 2. Listar con filtros (estado + prioridad + texto libre)
+GET {{base_url}}/tickets?estado=EN%20CURSO&prioridad=Alta&q=vpn&page=1&per_page=10
+X-API-Key: {{api_key}}
+
+### 3. Listar por técnico
+GET {{base_url}}/tickets?tecnico=2
+X-API-Key: {{api_key}}
+
+### 4. Detalle de un ticket con su historial
+GET {{base_url}}/tickets/TK-2026-000001
+X-API-Key: {{api_key}}
+
+### 5. Datos del solicitante por código
+GET {{base_url}}/usuarios/U001
+X-API-Key: {{api_key}}
+
+### 6. Técnicos activos con su carga actual
+GET {{base_url}}/tecnicos
+X-API-Key: {{api_key}}
+
+### 7. Catálogo de categorías
+GET {{base_url}}/categorias
+X-API-Key: {{api_key}}
+
+### 8. Resumen del tablero
+GET {{base_url}}/resumen
+X-API-Key: {{api_key}}
+
+### 9. Crear un ticket (201). Guarda el número que devuelva para los siguientes pasos.
+# @name crearTicket
+POST {{base_url}}/tickets
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "usuario_codigo": "U001",
+  "categoria_id": 3,
+  "descripcion": "La VPN corporativa se cae cada 10 minutos desde la oficina principal.",
+  "prioridad": "Alta",
+  "tecnico_id": 3
+}
+
+### 10. Cambiar de estado ABIERTO -> EN CURSO
+PATCH {{base_url}}/tickets/TK-2026-000002/estado
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "estado": "EN CURSO"
+}
+
+### 11. Cerrar EN CURSO -> CERRADO (la observación es la solución aplicada)
+PATCH {{base_url}}/tickets/TK-2026-000001/estado
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "estado": "CERRADO",
+  "observacion": "Se reinstaló el cliente de VPN y se confirmó con el usuario."
+}
+
+### 12. Reasignar técnico
+PATCH {{base_url}}/tickets/TK-2026-000004/tecnico
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "tecnico_id": 2
+}
+
+###############################################################################
+# CASOS DE ERROR (comprueban el formato único de error)
+###############################################################################
+
+### E1. 401 NO_AUTORIZADO - sin encabezado X-API-Key
+GET {{base_url}}/tickets
+
+### E2. 401 NO_AUTORIZADO - clave incorrecta
+GET {{base_url}}/tickets
+X-API-Key: clave-equivocada
+
+### E3. 404 NO_ENCONTRADO - ticket inexistente
+GET {{base_url}}/tickets/TK-2026-999999
+X-API-Key: {{api_key}}
+
+### E4. 404 NO_ENCONTRADO - usuario inexistente o inactivo (U010 está inactivo)
+GET {{base_url}}/usuarios/U010
+X-API-Key: {{api_key}}
+
+### E5. 405 METODO_NO_PERMITIDO - verbo no soportado
+DELETE {{base_url}}/tickets
+X-API-Key: {{api_key}}
+
+### E6. 422 VALIDACION - crear con datos inválidos (usuario inactivo, prioridad y descripción inválidas)
+POST {{base_url}}/tickets
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "usuario_codigo": "U010",
+  "categoria_id": 1,
+  "descripcion": "corta",
+  "prioridad": "Urgente",
+  "tecnico_id": 3
+}
+
+### E7. 422 VALIDACION - parámetros de paginación inválidos
+GET {{base_url}}/tickets?page=0&per_page=999
+X-API-Key: {{api_key}}
+
+### E8. 409 TRANSICION_INVALIDA - saltar de ABIERTO a CERRADO
+PATCH {{base_url}}/tickets/TK-2026-000002/estado
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "estado": "CERRADO",
+  "observacion": "Intento de salto de estado."
+}
+
+### E9. 422 VALIDACION - cerrar sin observación (solución)
+PATCH {{base_url}}/tickets/TK-2026-000001/estado
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "estado": "CERRADO"
+}
+
+### E10. 409 TECNICO_AL_TOPE - el técnico 1 ya tiene 5 tickets activos en el seed
+PATCH {{base_url}}/tickets/TK-2026-000008/tecnico
+X-API-Key: {{api_key}}
+Content-Type: application/json
+
+{
+  "tecnico_id": 1
+}
