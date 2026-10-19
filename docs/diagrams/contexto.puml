@@ -1,0 +1,19 @@
+@startuml
+' C4 Nivel 1 — Contexto. Fuente: docs/02-arquitectura.md
+' Renderizar con: plantuml docs/diagrams/contexto.puml
+title Diagrama de contexto (C4 Nivel 1)
+skinparam componentStyle rectangle
+
+actor "Agente de Soporte TI" as agente
+actor "Cliente de API\n(curl / Postman)" as cliente
+
+rectangle "Sistema de Tickets de Soporte TI" as sistema {
+  component "SPA + API REST (PHP 8.1)" as app
+}
+
+database "MySQL 8.0" as db
+
+agente --> app : HTTPS · SPA + fetch
+cliente --> app : HTTPS · JSON + X-API-Key
+app --> db : PDO · SQL preparado
+@enduml

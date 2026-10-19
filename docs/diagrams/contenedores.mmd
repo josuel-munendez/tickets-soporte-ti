@@ -1,0 +1,23 @@
+# Diagrama de contenedores (C4 Nivel 2) — copia para Mermaid Live / render.
+# Fuente: docs/02-arquitectura.md §2
+flowchart TB
+    subgraph navegador["Navegador"]
+        spa["SPA (app.html + ES6)<br/>tabla, tablero, formulario"]
+    end
+
+    subgraph servidor["Servidor PHP 8.1"]
+        front["Front Controller<br/>public/index.php"]
+        router["Router + Middlewares"]
+        controllers["Controllers"]
+        services["Services"]
+        repos["Repositories (PDO)"]
+        domain["Domain (clases puras)"]
+    end
+
+    db[("MySQL 8.0<br/>InnoDB · utf8mb4")]
+
+    spa -->|"fetch + X-API-Key"| front
+    front --> router --> controllers --> services
+    services --> repos -->|"SQL preparado"| db
+    services --> domain
+    front -.->|"inyecta API key"| spa

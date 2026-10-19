@@ -300,7 +300,27 @@ si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO
 
 ---
 
-## 12. Declaración de uso de IA
+## 12. Documentación (Doc-as-Code)
+
+Toda la documentación vive en el repo y evoluciona con el código (AGENTS.md §11):
+
+| Documento | Contenido |
+| --- | --- |
+| [`docs/00-vision-y-alcance.md`](docs/00-vision-y-alcance.md) | Problema, visión, alcance del MVP, actores |
+| [`docs/01-requisitos.md`](docs/01-requisitos.md) | RF, RNF y RI con trazabilidad |
+| [`docs/02-arquitectura.md`](docs/02-arquitectura.md) | C4 (contexto, contenedores, componentes) |
+| [`docs/03-modelo-datos.md`](docs/03-modelo-datos.md) | Diagrama ER y diccionario de datos |
+| [`docs/04-api.md`](docs/04-api.md) · [`docs/openapi.yaml`](docs/openapi.yaml) | Contrato REST (OpenAPI 3.0) |
+| [`docs/05-reglas-negocio.md`](docs/05-reglas-negocio.md) | RN-01…RN-09 y máquina de estados |
+| [`docs/06-decisiones/`](docs/06-decisiones/) | ADR-001…ADR-005 |
+| [`docs/07-pruebas.md`](docs/07-pruebas.md) | Matriz de pruebas y checklist de entrega |
+| [`docs/diagrams/`](docs/diagrams/) | Fuentes Mermaid (`.mmd`) y PlantUML (`.puml`) |
+| [`specs/`](specs/) | SDD: `spec.md` / `plan.md` / `tasks.md` por fase |
+| [`docs/ai-log.md`](docs/ai-log.md) | Bitácora de uso de IA |
+
+---
+
+## 13. Declaración de uso de IA
 
 > Este proyecto se desarrolló con apoyo de herramientas de IA (OpenCode, GitHub Copilot y
 > asistentes de chat) para generar y revisar código y documentación, siguiendo una metodología
@@ -309,6 +329,6 @@ si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO
 
 ---
 
-## 13. Autor
+## 14. Autor
 
 Prueba técnica — Aprendiz de Soporte TI, **MEGACOMERCIAL SAS**. Zona horaria: `America/Bogota`.
