@@ -305,3 +305,23 @@ y dejar Docker para el final de la fase.
 **Verificación:**
 - `docs/openapi.yaml` → YAML válido (10 rutas, 10 esquemas). Diagramas `.puml` compilan con PlantUML.
 - `scripts/guards.sh` → TODO OK. Suite PHPUnit sigue en verde (38 tests).
+
+## 2026-10-19 — Fase 10: Corrección del compose (nombres de contenedor)
+
+**Qué se pidió (usuario):** Al seguir el README y correr `docker compose up --build`, falló con
+`Conflict. The container name "/tickets-db" is already in use`.
+
+**Diagnóstico (agente):** el `docker-compose.yml` fijaba `container_name: tickets-db` / `tickets-app`,
+nombres genéricos que colisionan con cualquier contenedor ajeno (o con un levante previo). Además el
+usuario intentó los pasos manuales de `mysql` contra el socket del host, que no aplican cuando la BD
+vive en un contenedor.
+
+**Qué se generó (agente):**
+- `docker-compose.yml`: se **eliminaron los `container_name` fijos**; Compose pasa a nombrar
+  `<proyecto>-db-1` / `<proyecto>-app-1`, sin colisiones.
+- `README.md`: nota aclarando que con Docker se **omiten** los pasos manuales de `mysql`, y que los
+  contenedores llevan nombre derivado del proyecto.
+
+**Verificación:** `docker compose up -d --build` levanta `tickets-soporte-ti-db-1` (healthy) y
+`tickets-soporte-ti-app-1`; `GET /api/tickets` responde con el seed; SPA `200`; 401 sin clave.
+`docker compose down` limpia. Guards y PHPUnit en verde.

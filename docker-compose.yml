@@ -3,7 +3,8 @@
 services:
   db:
     image: mysql:8.0
-    container_name: tickets-db
+    # Sin container_name fijo: Compose nombra <proyecto>-db-1, así no choca con
+    # contenedores ajenos que ya usen nombres genéricos como "tickets-db".
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
@@ -28,7 +29,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tickets-app
+    # Sin container_name fijo (ver nota en el servicio db).
     depends_on:
       db:
         condition: service_healthy
