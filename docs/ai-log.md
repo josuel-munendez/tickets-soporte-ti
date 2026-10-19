@@ -280,3 +280,28 @@ y dejar Docker para el final de la fase.
 - `GET /api/tickets` → lista con datos del seed; `GET /api/tickets/export.csv?prioridad=Alta` → `text/csv`.
 - Transición inválida ABIERTO→CERRADO → `409`. Assets estáticos servidos por Apache (`api.js` → `text/javascript`).
 - Al terminar: `docker compose down -v` y se restauró el contenedor de desarrollo. Guards: TODO OK.
+
+## 2026-10-19 — Fase 9: Documentación Doc-as-Code
+
+**Qué se pidió (usuario):** «Seguir con la documentación» (completar `docs/`, AGENTS.md §11).
+
+**Qué se generó (agente):**
+- `docs/00-vision-y-alcance.md`: problema, visión, alcance del MVP, actores, principios y restricciones.
+- `docs/01-requisitos.md`: 17 RF, 10 RNF y 6 RI, cada uno con trazabilidad a regla (RN-xx), endpoint y/o test.
+- `docs/02-arquitectura.md`: C4 (contexto, contenedores, componentes) y diagrama de secuencia del POST /api/tickets.
+- `docs/03-modelo-datos.md`: diagrama ER (Mermaid) y diccionario de datos de las 6 tablas, derivado de `schema.sql`.
+- `docs/04-api.md`: contrato REST en Markdown con ejemplos `curl` reales; `docs/openapi.yaml` (OpenAPI 3.0) validado.
+- `docs/05-reglas-negocio.md`: RN-01…RN-09 con diagrama de estados y mapa de códigos HTTP.
+- `docs/06-decisiones/ADR-001…005.md`: PHP sin framework, consecutivo seguro, API key fail-closed, SPA vanilla, reglas como datos (con alternativas descartadas).
+- `docs/07-pruebas.md`: matriz casos ↔ requisitos, resultado de PHPUnit y checklist de la Definición de Terminado.
+- `docs/diagrams/`: fuentes `.puml` (contexto, estados) y `.mmd` (contenedores, estados), validadas con PlantUML.
+- `specs/009-documentacion/` (spec/plan/tasks) y README con índice de documentación (§12).
+
+**Decisiones de documentación:**
+- La doc se derivó del código (schema, Controllers/Services, respuestas reales de la API) para no inventar campos.
+- Diagramas como texto (Mermaid + PlantUML) para versionarlos y re-renderizarlos.
+- ADR con alternativas descartadas, porque la sustentación exige defender el «por qué».
+
+**Verificación:**
+- `docs/openapi.yaml` → YAML válido (10 rutas, 10 esquemas). Diagramas `.puml` compilan con PlantUML.
+- `scripts/guards.sh` → TODO OK. Suite PHPUnit sigue en verde (38 tests).
