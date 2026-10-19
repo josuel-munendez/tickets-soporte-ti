@@ -103,3 +103,35 @@ combinados, `q` por nombre y por número, paginación (page=3 → 5 filas), deta
 ticket, usuario activo 200 / inactivo 404 / inexistente 404, técnicos con carga 5/4/3 y `disponible`,
 categorías, resumen (`por_estado`, `vencidos=4`, `carga_por_tecnico`), 422 con `fields` para
 `page=0`/`per_page=99`/`estado=X`/`tecnico=abc`, y 401 sin clave. Guards: TODO OK.
+
+## 2026-10-19 — Fase 4: Creación de tickets (POST /api/tickets)
+
+**Qué se pidió (usuario):** Implementar la Fase 4 — creación de tickets con consecutivo seguro,
+tope de carga y SLA — con commits por fase.
+
+**Qué se generó (agente):**
+- Specs: `specs/004-post-tickets/{spec,plan,tasks}.md`.
+- `TicketRepository`: `siguienteConsecutivo(anio)` (INSERT IGNORE + SELECT…FOR UPDATE + UPDATE),
+  `insertar(datos): id` (nace siempre ABIERTO, sin solución) e `insertarHistorialCreacion(...)`.
+- `TecnicoRepository`: `bloquearPorId(id)` (`SELECT…FOR UPDATE`) y `contarActivos(id)`.
+- `CategoriaRepository`: `existe(id)`.
+- `TicketService::crear` (valida y junta TODOS los errores → 422; verifica usuario/categoría antes de
+  bloquear; orquesta la transacción con `Database::transaction`) y `validarCreacion`/`enteroRequerido`.
+- `TicketController::crear` (responde 201) y registro de `POST /api/tickets` en `index.php`
+  (se inyectó `Database` en el Service).
+
+**Decisiones (para sustentación):**
+- Orden de bloqueos técnico → consecutivo (§6.1; al crear no existe fila de ticket), lo que evita
+  interbloqueos contra una reasignación que ya bloqueó al técnico.
+- El consecutivo NO se calcula con `MAX(numero)+1`: se serializa con `SELECT…FOR UPDATE` sobre la fila
+  del año y `tickets.numero UNIQUE` es la segunda barrera.
+- Si el tope falla, el ROLLBACK deja el consecutivo sin quemar.
+
+**Verificación (curl, BD sembrada):**
+- POST válido → `201`, `TK-2026-000026`, ABIERTO, `vence = creado + 4h` (Alta), historial `CREACION`.
+- `422` con `fields` en: descripción corta + prioridad inválida (ambos juntos), usuario inactivo `U010`,
+  categoría inexistente y técnico inactivo; `409 TECNICO_AL_TOPE` (técnico 1 en 5); `401` sin clave.
+- **Concurrencia (RN-01):** 20 POST en paralelo (liberando capacidad y activando el técnico 4 para
+  tener 20 cupos) → **20×201, 20 números únicos y consecutivos (26–45), consecutivo final 45 sin
+  saltos, 0 duplicados**. BD restaurada con `seed.sql` después de la prueba.
+- Guards: TODO OK.

@@ -32,6 +32,12 @@ final class TicketController
         return Response::json($resultado);
     }
 
+    /** POST /api/tickets — crea un ticket y responde 201 con el recurso creado (§5). */
+    public function crear(Request $peticion): Response
+    {
+        return Response::json($this->tickets->crear($peticion->json()), 201);
+    }
+
     /** GET /api/tickets/{numero} — detalle con historial completo. */
     public function detalle(Request $peticion, array $parametros): Response
     {
