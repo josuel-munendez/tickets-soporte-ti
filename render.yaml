@@ -1,0 +1,29 @@
+# Render Blueprint (Infrastructure as Code, opcional).
+# Permite crear el servicio web y la base de datos con un solo "New + > Blueprint".
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Tras el primer despliegue, ejecuta una sola vez la inicialización del esquema:
+#   DB_URL="<Internal Database URL>" bash database/init-render.sh
+# (la BD gestionada ya existe y no permite CREATE DATABASE).
+services:
+  - type: web
+    name: tickets-soporte-ti
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/ping
+    envVars:
+      - key: API_KEY
+        generateValue: true        # Render genera una clave aleatoria
+      - key: DB_URL
+        fromDatabase:
+          name: tickets-db
+          property: connectionString
+
+databases:
+  - name: tickets-db
+    databaseName: soporte_ti
+    plan: free
+    # Render ofrece PostgreSQL y (según región/plan) MySQL. Si tu región no
+    # permite MySQL en plan free, cambia el proyecto a PostgreSQL o usa Railway
+    # (el código sigue siendo compatible con MySQL).

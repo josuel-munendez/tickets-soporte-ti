@@ -43,10 +43,8 @@ services:
     ports:
       - "${APP_PUERTO:-8080}:80"
     volumes:
-      # El entrypoint genera config/config.php desde el entorno (secreto no versionado).
-      - ./docker/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+      # logs persistentes (el entrypoint de la imagen genera config/config.php)
       - tickets_logs:/var/www/html/storage/logs
-    entrypoint: ["sh", "/usr/local/bin/entrypoint.sh"]
 
 volumes:
   tickets_datos:

@@ -325,3 +325,36 @@ vive en un contenedor.
 **Verificación:** `docker compose up -d --build` levanta `tickets-soporte-ti-db-1` (healthy) y
 `tickets-soporte-ti-app-1`; `GET /api/tickets` responde con el seed; SPA `200`; 401 sin clave.
 `docker compose down` limpia. Guards y PHPUnit en verde.
+
+## 2026-10-19 — Fase 11: Despliegue en línea (Render) + limpieza del README
+
+**Qué se pidió (usuario):** borrar el tag basura `1.0.0`, limpiar el README y adaptar el repo para
+desplegarlo gratis y accesible en línea (Render).
+
+**Qué se generó (agente):**
+- `docker/entrypoint.sh`: ahora acepta **`DB_URL`** (`mysql://usuario:pass@host:puerto/nombre`) además
+  de las variables sueltas (`DB_HOST`, `DB_PUERTO`, …), y **adapta Apache al `$PORT`** que inyectan
+  Render/Railway (con fallback a 80 en local). El parseo se hace con PHP (`parse_url`) para no depender
+  de herramientas externas; las contraseñas con caracteres especiales se decodifican con `urldecode`.
+- `Dockerfile`: define `ENTRYPOINT` propio (antes lo pasaba el compose) y expone `$PORT`.
+- `docker-compose.yml`: deja de montar/pasar el entrypoint (ahora vive en la imagen).
+- `database/init-render.sh`: aplica `schema.sql` + `seed.sql` en proveedores gestionados, **omitiendo**
+  `CREATE DATABASE`/`USE` (que solo aplican en local) y conectando por `DB_URL`. Pensado para ejecutarse
+  una sola vez contra la base gestionada.
+- `render.yaml`: Blueprint (web service Docker + base MySQL) para crear todo de una vez.
+- `.env.example`: documenta la alternativa `DB_URL`.
+- `README.md`: **reescrito limpio** (se eliminaron los escapados `\_` y los `file:///home/...`; ahora los
+  enlaces son relativos) y se añadió la **sección 12 «Despliegue en línea (Render)»**.
+- Tag `1.0.0` (sin `v`, duplicado y obsoleto) eliminado en local y en remoto.
+
+**Verificación (todo ejecutado):**
+- `docker compose up -d --build` → path de variables sueltas OK (ping, lista, SPA 200, 401 sin clave).
+- Imagen standalone con `-e PORT=10000 -e DB_URL=mysql://...` → Apache reescribió a `Listen 10000`, la
+  app respondió en `:10000` y el `config.php` generado salió correcto (usuario, host, base).
+- `database/init-render.sh` probado contra un usuario **sin** `CREATE DATABASE`: cargó 10 usuarios,
+  4 técnicos, 25 tickets y 4 categorías.
+- `scripts/guards.sh` → TODO OK. Suite PHPUnit → 38 tests, 65 aserciones, 0 omitidos.
+
+**Nota para el autor:** el despliegue free de Render **se suspende tras ~15 min** sin tráfico (despierta
+en ~30 s). Render ofrece MySQL y PostgreSQL; el proyecto es MySQL 8.0, así que si la región no habilita
+MySQL free, la alternativa indicada en el README es Railway con los mismos pasos (`DB_URL`).
