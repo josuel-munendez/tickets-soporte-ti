@@ -8,12 +8,25 @@ declare(strict_types=1);
  * Jamás expone trazas PHP o SQL al cliente (§4.4).
  */
 
+use App\Controllers\CategoriaController;
+use App\Controllers\TecnicoController;
+use App\Controllers\TicketController;
+use App\Controllers\UsuarioController;
 use App\Exceptions\ApiException;
 use App\Http\Middlewares\ApiKeyMiddleware;
 use App\Http\Request;
 use App\Http\Response;
 use App\Http\Router;
+use App\Repositories\CategoriaRepository;
+use App\Repositories\TecnicoRepository;
+use App\Repositories\TicketRepository;
+use App\Repositories\UsuarioRepository;
+use App\Services\CategoriaService;
+use App\Services\TecnicoService;
+use App\Services\TicketService;
+use App\Services\UsuarioService;
 use App\Support\Config;
+use App\Support\Database;
 
 // En el servidor de desarrollo, los archivos estáticos (app.html, assets) se
 // sirven solos; index.php solo atiende lo que no sea un archivo real.
@@ -76,11 +89,27 @@ $registrarError = static function (Throwable $error) use ($raiz): void {
 try {
     Config::cargar($raiz . '/config/config.php');
 
+    // Inyección manual de dependencias (§10 D): PDO → Repos → Services → Controllers.
+    // Si la BD no responde, PDOException cae al catch global ⇒ 500 sin trazas.
+    $conexion = (new Database(Config::obtener('db')))->conexion();
+    $ticketService = new TicketService(new TicketRepository($conexion), new TecnicoRepository($conexion));
+    $ticketController = new TicketController($ticketService);
+    $usuarioController = new UsuarioController(new UsuarioService(new UsuarioRepository($conexion)));
+    $tecnicoController = new TecnicoController(new TecnicoService(new TecnicoRepository($conexion)));
+    $categoriaController = new CategoriaController(new CategoriaService(new CategoriaRepository($conexion)));
+
     $router = new Router();
     $router->usarMiddleware(new ApiKeyMiddleware());
 
     // Ruta de salud (no es de negocio): permite probar el esqueleto sin BD (CA-4.4)
     $router->agregar('GET', '/api/ping', static fn (): Response => Response::json(['status' => 'ok']));
+
+    $router->agregar('GET', '/api/tickets', [$ticketController, 'listar']);
+    $router->agregar('GET', '/api/tickets/{numero}', [$ticketController, 'detalle']);
+    $router->agregar('GET', '/api/resumen', [$ticketController, 'resumen']);
+    $router->agregar('GET', '/api/usuarios/{codigo}', [$usuarioController, 'buscar']);
+    $router->agregar('GET', '/api/tecnicos', [$tecnicoController, 'listar']);
+    $router->agregar('GET', '/api/categorias', [$categoriaController, 'listar']);
 
     $router->resolver(Request::desdeGlobals())->enviar();
 } catch (ApiException $e) {

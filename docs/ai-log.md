@@ -67,3 +67,39 @@ la Fase 2: cargar y verificar `schema.sql`/`seed.sql` en el MySQL real.
   `config.example.php` sigue con placeholders.
 
 **No modificado:** `database/schema.sql` y `database/seed.sql` pasaron las verificaciones sin cambios.
+
+## 2026-10-18 — Fase 3: Endpoints de lectura (GET) y tablero
+
+**Qué se pidió (usuario):** Implementar la Fase 3 — endpoints GET de consulta, detalle, filtros y
+resumen — con commits por fase y luego seguir.
+
+**Qué se generó (agente):**
+- Specs: `specs/003-endpoints-get/{spec,plan,tasks}.md`.
+- `src/Domain/Constantes.php` (MAX_TICKETS_TECNICO=5, ESTADOS, PRIORIDADES) y
+  `src/Domain/SlaCalculator.php` (RN-08: Alta 4h/Media 24h/Baja 72h; VENCIDO/POR_VENCER/EN_TIEMPO/null;
+  recibe `now` por parámetro ⇒ testeable sin congelar el reloj).
+- Repositories: `UsuarioRepository`, `TecnicoRepository` (carga activa por SQL), `CategoriaRepository`,
+  `TicketRepository` (listado con filtros + paginación, detalle, historial, conteos, vencidos).
+- Services: `TicketService` (valida filtros → 422 VALIDACION con `fields`, formatea ISO-8601 `-05:00`
+  y calcula el indicador SLA), `UsuarioService` (404 si inexistente/inactivo, RN-02), `TecnicoService`,
+  `CategoriaService`.
+- Controllers delgados: `TicketController` (listar/detalle/resumen), `UsuarioController`,
+  `TecnicoController`, `CategoriaController`.
+- `public/index.php`: inyección manual PDO → Repos → Services → Controllers y registro de las 6 rutas GET.
+
+**Qué se modificó (agente):**
+- `src/Http/Request.php`: `query()` renombrado a `parametro()` porque el guard de capas (§12) leía
+  `->query(` como acceso a PDO. Se actualizaron `TicketController` y las notas de la fase 1.
+
+**Incidencias resueltas durante las pruebas (para sustentar):**
+1. `q=Torres` daba 500 `SQLSTATE[HY093]`: con prepares nativos (`EMULATE_PREPARES=false`) un mismo
+   placeholder no puede repetirse en el SQL; se usaron `:q_numero` y `:q_usuario` con el mismo valor.
+2. `/api/resumen` devolvía 404: se había registrado como `/api/tickets/resumen`; el contrato §5 usa la
+   ruta raíz `/api/resumen`. Corregido.
+3. Guard de capas: falso positivo por el nombre `query()` en Request ⇒ renombrado a `parametro()`.
+
+**Verificación (curl con clave válida, BD sembrada):** lista (total 25, ISO `-05:00`, SLA), filtros
+combinados, `q` por nombre y por número, paginación (page=3 → 5 filas), detalle con historial, 404 de
+ticket, usuario activo 200 / inactivo 404 / inexistente 404, técnicos con carga 5/4/3 y `disponible`,
+categorías, resumen (`por_estado`, `vencidos=4`, `carga_por_tecnico`), 422 con `fields` para
+`page=0`/`per_page=99`/`estado=X`/`tecnico=abc`, y 401 sin clave. Guards: TODO OK.

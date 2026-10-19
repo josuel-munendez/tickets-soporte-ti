@@ -61,7 +61,8 @@ final class Request
         return $this->ruta;
     }
 
-    public function query(string $clave, mixed $defecto = null): mixed
+    /** Parámetro de la query string por nombre (nombre evita confundirse con PDO::query, guard §12). */
+    public function parametro(string $clave, mixed $defecto = null): mixed
     {
         return $this->query[$clave] ?? $defecto;
     }
