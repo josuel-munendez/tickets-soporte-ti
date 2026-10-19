@@ -250,8 +250,9 @@ Ambos incluyen los 9 endpoints y los casos de error (401, 404, 409, 422).
 ├── specs/                 # Spec-Driven Development (spec/plan/tasks por funcionalidad)
 ├── tests/                 # PHPUnit: Unit (dominio puro) e Integration (BD real)
 ├── scripts/               # guards.sh (barreras automáticas)
-├── docker/                # entrypoint.sh (genera config.php desde el entorno)
-├── Dockerfile             # Imagen PHP 8.1 + Apache con el docroot en public/
+├── docker/                # entrypoint.sh (app) y entrypoint-allinone.sh (app+BD)
+├── Dockerfile             # Imagen PHP 8.1 + Apache con el docroot en public/ (solo app)
+├── Dockerfile.allinone    # Imagen PHP 8.1 + Apache + MariaDB (app + BD en un contenedor)
 ├── docker-compose.yml     # app + MySQL 8.0 (schema/seed como initdb)
 ├── render.yaml            # Blueprint de Render (solo el web service; DB_URL manual)
 └── .env.example           # Plantilla de variables de entorno para Docker (sin secretos)
@@ -301,32 +302,36 @@ bash scripts/guards.sh
 
 El repo ya trae todo lo necesario para desplegar por Docker **sin cambiar código**:
 
-- `Dockerfile` con `ENTRYPOINT` propio: genera `config/config.php` desde variables de entorno y **adapta Apache al `$PORT`** que inyecta la plataforma.
+- `Dockerfile.allinone` (**app + MariaDB en un solo contenedor**) + `docker/entrypoint-allinone.sh`: levanta la BD, aplica esquema/seed y sirve la app. Ideal para el plan Free de Render sin base externa.
+- `Dockerfile` (solo app) con `ENTRYPOINT` propio: genera `config/config.php` desde variables de entorno y **adapta Apache al `$PORT`** que inyecta la plataforma.
 - `docker/entrypoint.sh` acepta **`DB_URL`** (`mysql://usuario:pass@host:puerto/nombre`) o las variables sueltas (`DB_HOST`, `DB_PUERTO`, …) que usa `docker compose`.
 - `database/init-render.sh` aplica el esquema y el seed en proveedores gestionados (omite `CREATE DATABASE`/`USE`, que solo aplican en local).
 
-> ⚠️ **Render NO ofrece MySQL gestionado nativo** (solo PostgreSQL y Redis). Por eso hay dos caminos reales:
+> ⚠️ **Render NO ofrece MySQL gestionado nativo** (solo PostgreSQL y Redis). Por eso hay tres caminos reales:
 
-### Opción 1 — Railway (recomendada para demo completa) ⭐
+### Opción 1 — Render "todo en uno" (app + BD en un solo contenedor) ⭐
 
-[Railway](https://railway.com) sí ofrece **MySQL con un clic** y detecta el `Dockerfile`. La forma más simple de tener app + base juntas y conectadas:
+Si **no quieres usar Railway ni contratar una base externa**, esta es la vía directa: un `Dockerfile.allinone` empaqueta **PHP 8.1 + Apache + MariaDB** en **un único contenedor**. Al arrancar, el entrypoint levanta MariaDB, aplica `schema.sql` + `seed.sql` y sirve la app. Todo dentro del **plan Free de Render**.
 
-1. **New Project** → **Deploy from GitHub repo** → elige `tickets-soporte-ti` (Railway detecta el `Dockerfile`).
-2. En el mismo proyecto: **+ New** → **Database** → **MySQL**.
-3. En el servicio de la app, añade la variable `API_KEY` (tu clave) y deja que el `DB_URL` apunte al MySQL del proyecto (Railway inyecta la URL interna; si no, copia la conexión a mano).
-4. **Inicializa la base** una sola vez, desde tu equipo, con la URL pública del MySQL:
+1. En Render: **New +** → **Web Service** → conecta `tickets-soporte-ti`.
+2. Configura:
+   - **Language:** `Docker`
+   - **Branch:** `main`
+   - **Dockerfile Path:** `./Dockerfile.allinone`  ← **el nombre importa**
+   - **Health Check Path:** `/api/ping`
+   - **Compute Plan:** `Free`
+3. **Environment Variables:** solo `API_KEY` = *tu clave* (no hace falta `DB_URL`).
+4. **Deploy**. Al terminar, abre `https://<servicio>.onrender.com/` y usa la misma `API_KEY` en `X-API-Key`.
 
-```bash
-DB_URL="mysql://usuario:pass@host:puerto/railway" bash database/init-render.sh
-```
+> El esquema y el seed se aplican **en cada arranque** (el `seed.sql` es re-ejecutable).
 
-5. Abre la URL pública del servicio y usa la misma `API_KEY` en `X-API-Key`.
+> ⚠️ **Limitación del plan Free (léela):** Render Free **no da discos persistentes** y el servicio se apaga tras ~15 min sin tráfico. Al apagarse o re-desplegarse, el contenedor se recrea y la base **vuelve al estado del seed** (los 25 tickets de demo). Es perfecto para una **demo/entrega**; los datos que se creen durante la sustentación se perderán tras la inactividad. Si necesitas persistencia real, usa la Opción 2.
 
-> Railway da una **prueba gratuita de $5 por 30 días** (sin tarjeta) y luego un plan Free con $1/mes de crédito. Suficiente para una entrega.
+> Al despertar de la suspensión, la primera petición tarda ~30–60 s (arranca MariaDB + aplica el seed). Es normal.
 
 ### Opción 2 — Render (app) + MySQL externo gratis
 
-Render hospeda el **servicio web** gratis, pero el MySQL lo pones **tú, externo** (Railway, Aiven, Clever Cloud…), que te da una URL `mysql://…` gratuita:
+Render hospeda el **servicio web** gratis, pero el MySQL lo pones **tú, externo** (Railway, Aiven, Clever Cloud…), que te da una URL `mysql://…` gratuita. Es la opción con **datos persistentes**:
 
 1. Crea un MySQL gratuito en el proveedor externo y copia su **URL de conexión**.
 2. En Render: **New +** → **Blueprint** (usa `render.yaml`) o **New +** → **Web Service** con:
@@ -342,11 +347,20 @@ DB_URL="mysql://usuario:pass@host:puerto/soporte_ti" bash database/init-render.s
 
 5. Abre **`https://<servicio>.onrender.com/`** (SPA) y **`/api/ping`** (API).
 
-> **Plan free de Render:** el servicio se suspende tras ~15 min sin tráfico y despierta en ~30 s en la primera petición. Es normal en la capa gratuita.
+### Opción 3 — Railway (app + MySQL gestionado en un proyecto)
 
-### Opción 3 — Solo local (lo más seguro para el video)
+[Railway](https://railway.com) sí ofrece **MySQL con un clic** y detecta el `Dockerfile`:
 
-Si no quieres lidiar con la nube, graba el video con la app local (`docker compose up --build` o `php -S localhost:8080 -t public public/index.php`). Todo funciona sin latencia de red y controlas el consecutivo, el SLA y los errores HTTP. El despliegue en línea queda como extra.
+1. **New Project** → **Deploy from GitHub repo** → elige `tickets-soporte-ti`.
+2. En el mismo proyecto: **+ New** → **Database** → **MySQL**.
+3. Añade `API_KEY` al servicio de la app y apunta `DB_URL` al MySQL del proyecto.
+4. Inicializa una vez: `DB_URL="mysql://…" bash database/init-render.sh`
+
+> Railway da una **prueba gratuita de $5 por 30 días** (sin tarjeta) y luego un plan Free con $1/mes de crédito.
+
+### Opción 4 — Solo local (lo más seguro para el video)
+
+Si no quieres lidiar con la nube, graba el video con la app local (`docker compose up --build` o `php -S localhost:8080 -t public public/index.php`). Todo funciona sin latencia de red y controlas el consecutivo, el SLA y los errores HTTP.
 
 > La misma mecánica (`DB_URL` + `database/init-render.sh`) sirve para cualquier proveedor con MySQL: Fly.io, Clever Cloud, Aiven, etc.
 

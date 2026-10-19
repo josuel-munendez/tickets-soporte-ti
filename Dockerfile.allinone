@@ -1,0 +1,90 @@
+# syntax=docker/dockerfile:1
+# =====================================================================
+# Imagen "todo en uno": PHP 8.1 + Apache + MariaDB en un SOLO contenedor.
+#
+# Para qué sirve:
+#   Desplegar la app completa (API + SPA + base de datos) en plataformas que
+#   ejecutan un único contenedor y NO ofrecen MySQL gestionado (por ejemplo,
+#   el plan Free de Render). La base de datos vive DENTRO del contenedor.
+#
+# ⚠️  LIMITACIÓN IMPORTANTE (leer antes de usar en producción):
+#   El plan Free de Render NO da discos persistentes. Al apagarse el servicio
+#   por inactividad (o al redeploy), el contenedor se recrea y la base de datos
+#   vuelve a su estado inicial. Por eso `docker/entrypoint-db.sh` re-aplica el
+#   seed en CADA arranque: la app siempre despierta con los 25 tickets de demo.
+#   Es ideal para una demo/entrega; para datos que deban sobrevivir, usa
+#   `Dockerfile` (app) + una base MySQL externa.
+#
+# Uso local (igual que docker-compose, pero en un solo contenedor):
+#   docker build -f Dockerfile.allinone -t tickets-allinone .
+#   docker run -p 8080:80 -e API_KEY=mi-clave tickets-allinone
+#
+# En Render: crear un Web Service con "Dockerfile Path" = ./Dockerfile.allinone
+# y la variable de entorno API_KEY.
+# =====================================================================
+FROM php:8.1-apache
+
+# --- 1. Dependencias del sistema: MariaDB (servidor + cliente) y utilidades ---
+#   • mariadb-server/mariadb-client -> motor de base de datos dentro del contenedor.
+#   • libzip-dev + unzip -> requeridos por Composer (usa la extensión zip de PHP).
+#   • git -> lo necesitan algunas dependencias de Composer.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        mariadb-server \
+        mariadb-client \
+        libzip-dev \
+        unzip \
+        git \
+    && docker-php-ext-install pdo_mysql zip \
+    && a2enmod rewrite headers \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- 2. Configuración de Apache (docroot en public/, §3) ---------------------
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+        /etc/apache2/sites-available/*.conf \
+        /etc/apache2/apache2.conf \
+        /etc/apache2/conf-available/*.conf \
+    && printf '%s\n' \
+        '<Directory /var/www/html/public>' \
+        '    AllowOverride All' \
+        '    Require all granted' \
+        '</Directory>' \
+        > /etc/apache2/conf-available/zz-soporte-ti.conf \
+    && a2enconf zz-soporte-ti
+
+# --- 3. Configuración de PHP (zona horaria y errores ocultos, §2 y §4.4) -----
+RUN printf '%s\n' \
+    'date.timezone = America/Bogota' \
+    'display_errors = 0' \
+    'log_errors = 1' \
+    > /usr/local/etc/php/conf.d/zz-soporte-ti.ini
+
+WORKDIR /var/www/html
+
+# --- 4. Código del proyecto --------------------------------------------------
+# vendor/ y config/config.php se excluyen con .dockerignore; Composer instala
+# las dependencias de producción dentro de la imagen.
+COPY . .
+
+RUN if [ -f composer.json ]; then \
+        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+        && composer install --no-dev --no-interaction --optimize-autoloader --no-scripts; \
+    fi
+
+# --- 5. Preparar MariaDB dentro de la imagen ---------------------------------
+#   • Se inicializa el directorio de datos una sola vez en build (más rápido).
+#   • El socket de MariaDB se guarda en /run/mysqld (existe en la imagen base).
+RUN mkdir -p /run/mysqld /var/lib/mysql \
+    && chown -R mysql:mysql /run/mysqld /var/lib/mysql \
+    && mariadb-install-db --user=mysql --datadir=/var/lib/mysql --auth-root-authentication-method=normal >/dev/null \
+    && chown -R www-data:www-data /var/www/html
+
+# --- 6. Entrypoint: arranca MariaDB, aplica esquema+seed y lanza Apache ------
+COPY docker/entrypoint-allinone.sh /usr/local/bin/entrypoint-allinone.sh
+RUN chmod +x /usr/local/bin/entrypoint-allinone.sh
+
+ENV PORT=80
+EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/entrypoint-allinone.sh"]
