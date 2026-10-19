@@ -41,4 +41,13 @@ RUN if [ -f composer.json ]; then \
     fi \
     && chown -R www-data:www-data /var/www/html
 
+# El entrypoint genera config/config.php desde variables de entorno (DB_URL o
+# DB_HOST/DB_PUERTO/...) y adapta Apache al puerto de la plataforma ($PORT).
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Render/Railway inyectan $PORT; en local se usa 80.
+ENV PORT=80
 EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
