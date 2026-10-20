@@ -570,7 +570,7 @@ PDOException: SQLSTATE[HY000] [1045] Access denied for user 'soporte'@'172.18.0.
 Eran **dos problemas distintos**:
 
 1. **Causa del 500 — credenciales de BD desincronizadas.** El volumen `tickets_datos` se creó el
-   19-oct con una contraseña que después se cambió en `.env` (`soporte`/`12345`). MySQL solo aplica
+   19-oct con una contraseña que después se cambió en `.env` (`soporte`/`***`). MySQL solo aplica
    `MYSQL_USUARIO`/`MYSQL_PASSWORD` al **inicializar un volumen vacío**; al recrear el contenedor con
    la clave nueva, la BD conservó la vieja ⇒ `Access denied` ⇒ 500 en toda ruta que usa BD.
    *Solución (autorizada por el usuario):* borrar el volumen para que MySQL se re-inicialice con el
@@ -588,7 +588,7 @@ Verificado: tras forzar un fallo de BD, la traza **sí** se escribe en
 `/api/tickets`, `/api/resumen`, `/api/tecnicos`, `/api/categorias`, `/api/usuarios/U001` → 200; SPA → 200.
 
 > Nota: el archivo local `postman/postman/environments/local.environment.yaml` quedó con la API key
-> real escrita a mano (`12345`); **no se versionó** para no exponer un secreto.
+> real escrita a mano (`***`); **no se versionó** para no exponer un secreto.
 
 ## 2026-10-20 — Postman: versionar solo el environment `.example`
 
