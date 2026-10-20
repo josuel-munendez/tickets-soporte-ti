@@ -542,3 +542,14 @@ existen; `scripts/guards.sh` → TODO OK.
 **Cobertura:** los **7 bloques Mermaid** de la documentación ya tienen su imagen (PNG + SVG); 7
 variantes de diagrama en total. Verificado: todas las referencias `diagrams/img/*.png` desde los `.md`
 resuelven; `scripts/guards.sh` → TODO OK.
+
+## 2026-10-19 — Enlace del video añadido al README
+
+**Qué se pidió (usuario):** cargar el enlace del video de demostración en el README.
+
+**Qué se hizo (agente):**
+- `README.md`: se reemplazaron los dos marcadores de posición (_Pendiente_) por el enlace real de
+  **Google Drive** — en la fila `Video de demostración` de la tabla de encabezado y en la sección
+  `## Video de demostración` (con nota de duración ~11 min).
+
+**Enlace:** https://docs.google.com/videos/d/1IbyXjwKtlBSq1QF5fz1QHRZZdRgLLTSTVawSdnw8zzM/play?usp=sharing
