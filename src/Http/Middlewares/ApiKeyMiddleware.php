@@ -12,12 +12,23 @@ use App\Support\Config;
  * encabezado X-API-Key. La comparación usa hash_equals (timing-safe, sin
  * cortes por igualdad parcial). Política fail-closed: si la clave configurada
  * está vacía, NADIE autentica y se registra el problema de configuración.
+ *
+ * Excepción: /api/ping es la ruta de SALUD (no de negocio). Responde sin clave
+ * para que los balanceadores/health checks de la plataforma (Render, etc.) puedan
+ * verificar que el proceso vive. No expone datos de negocio.
  */
 final class ApiKeyMiddleware
 {
+    /** Rutas públicas que NO exigen API key (solo salud). */
+    private const RUTAS_PUBLICAS = ['/api/ping'];
+
     /** @param callable(Request): Response $siguiente */
     public function __invoke(Request $peticion, callable $siguiente): Response
     {
+        if (in_array($peticion->ruta(), self::RUTAS_PUBLICAS, true)) {
+            return $siguiente($peticion);
+        }
+
         $configurada = Config::apiKey();
         $enviada = $peticion->header('X-API-Key');
 
