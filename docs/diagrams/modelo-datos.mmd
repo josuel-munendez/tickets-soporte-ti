@@ -1,0 +1,56 @@
+# Diagrama entidad-relación (modelo de datos) — copia para Mermaid Live / render.
+# Fuente: docs/03-modelo-datos.md §1 (esquema real en database/schema.sql)
+erDiagram
+    USUARIOS ||--o{ TICKETS : "solicita"
+    CATEGORIAS ||--o{ TICKETS : "clasifica"
+    TECNICOS ||--o{ TICKETS : "atiende"
+    TICKETS ||--o{ TICKET_HISTORIAL : "registra"
+    TECNICOS ||--o{ TICKET_HISTORIAL : "anterior/nuevo"
+
+    CATEGORIAS {
+        tinyint  id PK
+        varchar  nombre UK
+    }
+    USUARIOS {
+        int      id PK
+        varchar  codigo UK
+        varchar  nombre
+        varchar  cargo
+        varchar  area
+        tinyint  activo
+    }
+    TECNICOS {
+        int      id PK
+        varchar  nombre
+        tinyint  activo
+    }
+    CONSECUTIVOS_TICKET {
+        smallint anio PK
+        int      ultimo
+    }
+    TICKETS {
+        bigint   id PK
+        varchar  numero UK
+        int      usuario_id FK
+        tinyint  categoria_id FK
+        varchar  descripcion
+        enum     prioridad
+        int      tecnico_id FK
+        enum     estado
+        text     solucion
+        datetime creado_en
+        datetime vence_en
+        datetime actualizado_en
+        datetime cerrado_en
+    }
+    TICKET_HISTORIAL {
+        bigint   id PK
+        bigint   ticket_id FK
+        enum     tipo_cambio
+        enum     estado_anterior
+        enum     estado_nuevo
+        int      tecnico_anterior_id FK
+        int      tecnico_nuevo_id FK
+        varchar  observacion
+        datetime creado_en
+    }

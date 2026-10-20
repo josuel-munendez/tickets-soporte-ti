@@ -9,6 +9,8 @@ Diagramas del proyecto en **Diagram-as-Code** (texto versionable) con sus **imá
 | Componentes (C4 Nivel 3) | [`componentes.mmd`](componentes.mmd) | [`img/componentes.png`](img/componentes.png) · [`img/componentes.svg`](img/componentes.svg) | [`../02-arquitectura.md`](../02-arquitectura.md) |
 | Secuencia de una petición | [`secuencia-peticion.mmd`](secuencia-peticion.mmd) | [`img/secuencia-peticion.png`](img/secuencia-peticion.png) · [`img/secuencia-peticion.svg`](img/secuencia-peticion.svg) | [`../02-arquitectura.md`](../02-arquitectura.md) |
 | Máquina de estados del ticket | [`estados-ticket.puml`](estados-ticket.puml) · [`estados-ticket.mmd`](estados-ticket.mmd) | [`img/estados-ticket.png`](img/estados-ticket.png) · [`img/estados-ticket.svg`](img/estados-ticket.svg) | [`../05-reglas-negocio.md`](../05-reglas-negocio.md) |
+| Modelo entidad-relación | [`modelo-datos.mmd`](modelo-datos.mmd) | [`img/modelo-datos.png`](img/modelo-datos.png) · [`img/modelo-datos.svg`](img/modelo-datos.svg) | [`../03-modelo-datos.md`](../03-modelo-datos.md) |
+| Secuencia del consecutivo (RN-01) | [`secuencia-consecutivo.mmd`](secuencia-consecutivo.mmd) | [`img/secuencia-consecutivo.png`](img/secuencia-consecutivo.png) · [`img/secuencia-consecutivo.svg`](img/secuencia-consecutivo.svg) | [`../05-reglas-negocio.md`](../05-reglas-negocio.md) |
 
 > Las fuentes `.mmd` (Mermaid) se ven directamente en GitHub dentro de los `.md`; las imágenes
 > `.png`/`.svg` garantizan que los diagramas se vean también **fuera de GitHub** (PDF, ZIP, editores
