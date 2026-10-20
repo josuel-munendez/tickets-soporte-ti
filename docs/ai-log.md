@@ -473,3 +473,16 @@ endpoints sigue exigiendo `X-API-Key` (401 si falta o es inválida).
 
 **Verificación:** `scripts/guards.sh` → TODO OK; PHPUnit → 38 tests OK; en la imagen todo-en-uno,
 `/api/ping` sin clave → 200 y `/api/tickets` sin clave → 401.
+
+## 2026-10-19 — Hotfix: toast de avisos visible cuando estaba vacío
+
+**Síntoma:** en la SPA aparecía un pequeño recuadro negro abajo al centro aunque no hubiera
+mensajes. Es el toast `#aviso`, que se ocultaba solo con `transform: translateY(140%)`; como el
+alto real del elemento superaba ese porcentaje, una franja quedaba asomando.
+
+**Corrección (CSS, `public/assets/css/estilos.css`):** el estado oculto ahora combina
+`opacity: 0` + `visibility: hidden` + `pointer-events: none` (con transición), y la clase
+`.aviso--visible` restaura `opacity/visibility/pointer-events`. No requirió cambios de JS: el
+lógica existente (`ui.js`) ya añade y quita `.aviso--visible`.
+
+**Verificación:** `scripts/guards.sh` → TODO OK.

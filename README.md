@@ -7,6 +7,25 @@
 | Apellidos y nombres | Jose Manuel Muñoz Fernández |
 | Fecha de entrega | Domingo 18 de Octubre 2026 |
 | Repositorio | [https://github.com/josuel-munendez/tickets-soporte-ti](https://github.com/josuel-munendez/tickets-soporte-ti) |
+| Demo en línea | [https://tickets-soporte-ti.onrender.com](https://tickets-soporte-ti.onrender.com) |
+| Video de demostración | _Pendiente: pegar aquí el enlace del video (YouTube no listado / Drive)_ |
+
+## Demo en línea
+
+La aplicación está desplegada y accesible públicamente:
+
+- **SPA:** [https://tickets-soporte-ti.onrender.com](https://tickets-soporte-ti.onrender.com)
+- **Health check (API):** [https://tickets-soporte-ti.onrender.com/api/ping](https://tickets-soporte-ti.onrender.com/api/ping) → `{"status":"ok"}`
+
+Usa la API key indicada en la sección de configuración para operar la API (la SPA la pide en pantalla).
+
+> **Plan Free de Render:** el servicio se suspende tras ~15 min sin tráfico y despierta en ~30–60 s en la primera petición (arranca MariaDB + aplica el seed). Como el plan Free no incluye disco persistente, la base vuelve al estado del `seed.sql` (25 tickets de demostración) tras cada reinicio. Detalles en la [§12](#12-despliegue-en-línea-punto-extra-opcional).
+
+## Video de demostración
+
+> ⏳ **Pendiente de grabar.** El guion (11 min) cubre: flujo completo (registro → en curso → cierre), filtros, SLA, errores de validación y transición inválida, recorrido por el código y dos decisiones técnicas.
+
+**Enlace del video:** _pegar aquí la URL cuando se publique (YouTube no listado o Drive)_.
 
 ## Contexto
 
@@ -295,6 +314,9 @@ bash scripts/guards.sh
 `guards.sh` falla si un PHP no compila, si se commitea `config/config.php` o hay secretos, si aparece HTML crudo (`innerHTML`), si hay SQL concatenado, si hay acceso a PDO fuera de `Repositories/Support` o si queda depuración olvidada.
 
 ## 12. Despliegue en línea (punto extra, opcional)
+
+> **Desplegado y funcionando en:** [https://tickets-soporte-ti.onrender.com](https://tickets-soporte-ti.onrender.com)
+> (Render, plan Free, con `Dockerfile.allinone` — app + MariaDB en un mismo contenedor).
 
 > El enunciado marca el despliegue en línea como **punto extra opcional**. La calificación
 > principal (100 pts) se juega en **local**, con `docker compose` o `php -S`, donde tienes control
