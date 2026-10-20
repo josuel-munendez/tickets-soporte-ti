@@ -11,3 +11,6 @@ tickets_*.csv
 .DS_Store
 ~lock.*#
 .~lock.*
+
+# Entorno de Postman con la API key real: solo se versiona el .example (plantilla).
+postman/postman/environments/local.environment.yaml
