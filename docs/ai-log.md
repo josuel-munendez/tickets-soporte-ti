@@ -457,3 +457,19 @@ comporta como corresponde.
 - `PATCH .../estado` ABIERTO→CERRADO → **409 TRANSICION_INVALIDA**; ABIERTO→EN CURSO → **200**.
 - `GET /` (SPA) → **200**.
 - Tras `docker restart`, la BD vuelve a 25 tickets (comportamiento documentado del plan Free sin disco).
+
+## 2026-10-19 — Hotfix: `/api/ping` público (health check de Render)
+
+**Síntoma en el despliegue:** el servicio de Render quedaba en bucle "In progress" porque su
+health check (configurado en `/api/ping`) recibía **401** y nunca un 200.
+
+**Causa:** `ApiKeyMiddleware` protege **todas** las rutas `/api/*`, incluida `/api/ping`. Pero el
+contrato ya declaraba que ping **no exige clave** (`docs/04-api.md:257` y `docs/openapi.yaml`
+con `security: []`). Es decir: **la implementación contradecía su propia documentación**.
+
+**Corrección:** se añadió una lista blanca de rutas públicas (`RUTAS_PUBLICAS = ['/api/ping']`)
+en `ApiKeyMiddleware`; esa ruta responde 200 sin clave y no expone datos de negocio. El resto de
+endpoints sigue exigiendo `X-API-Key` (401 si falta o es inválida).
+
+**Verificación:** `scripts/guards.sh` → TODO OK; PHPUnit → 38 tests OK; en la imagen todo-en-uno,
+`/api/ping` sin clave → 200 y `/api/tickets` sin clave → 401.
