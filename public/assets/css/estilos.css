@@ -146,8 +146,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--azul); bord
 .campo--error input, .campo--error select, .campo--error textarea { border-color: var(--rojo); }
 
 /* Aviso ------------------------------------------------------------------- */
+/* El aviso es un popover (ver avisar() en ui.js): así entra al "top layer" del
+   navegador y puede mostrarse POR ENCIMA de un <dialog>.showModal(), algo que
+   ningún z-index consigue. Como popover trae estilos del navegador (inset: 0,
+   margin: auto, borde), se resetean explícitamente aquí. */
 .aviso {
-  position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(140%);
+  position: fixed; inset: auto auto 1rem 50%; margin: 0; border: 0;
+  transform: translateX(-50%) translateY(140%);
   background: var(--gris-900); color: var(--blanco); padding: .7rem 1.1rem; border-radius: .5rem;
   box-shadow: var(--sombra); font-size: .9rem; max-width: 90vw; z-index: 50;
   /* Oculto cuando no hay mensaje: fuera de pantalla, transparente y sin interacción. */
@@ -156,7 +161,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--azul); bord
 }
 .aviso--visible {
   transform: translateX(-50%) translateY(0);
-  opacity: 1; visibility: visible; pointer-events: auto;
+  opacity: 1; visibility: visible;
+  /* Sigue sin capturar clics: al mostrarse sobre el modal (top layer) no debe
+     bloquear los botones que quedan debajo. Es solo informativo (role="alert"). */
+  pointer-events: none;
 }
 .aviso--error { background: var(--rojo); }
 .aviso--ok { background: var(--verde); }
