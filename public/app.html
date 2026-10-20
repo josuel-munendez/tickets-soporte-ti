@@ -156,7 +156,9 @@
     </div>
   </dialog>
 
-  <div id="aviso" class="aviso" role="alert" aria-live="polite"></div>
+  <!-- popover="manual": el aviso se muestra en el top layer del navegador para
+       quedar por encima de los <dialog>.showModal() (ver Ui.avisar). -->
+  <div id="aviso" class="aviso" role="alert" aria-live="polite" popover="manual"></div>
 
   <script src="assets/js/utils.js"></script>
   <script src="assets/js/api.js"></script>

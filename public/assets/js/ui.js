@@ -50,13 +50,38 @@ window.Ui = (function () {
   }
 
   /** Aviso flotante. tipo: 'ok' | 'error'. */
+  /**
+   * Muestra un aviso flotante. Los modales usan <dialog>.showModal(), que los
+   * coloca en el "top layer" del navegador: ninguna regla z-index puede quedar
+   * por encima. Por eso el aviso es un popover y se vuelve a mostrar en cada
+   * mensaje, lo que lo reinserta al final del top layer y lo deja visible sobre
+   * el modal abierto (nuevo ticket, detalle/edición).
+   */
   function avisar(mensaje, tipo) {
     var aviso = Utils.porId('aviso');
     aviso.textContent = mensaje;
     aviso.className = 'aviso aviso--visible' + (tipo ? ' aviso--' + tipo : '');
+
+    if (typeof aviso.showPopover === 'function') {
+      try {
+        if (aviso._abierto) {
+          aviso.hidePopover();
+        }
+        aviso.showPopover();
+        aviso._abierto = true;
+      } catch (error) {
+        /* Navegador sin soporte de popover: el aviso se muestra igual, solo que
+           un modal abierto podría taparlo. */
+      }
+    }
+
     clearTimeout(avisar._t);
     avisar._t = setTimeout(function () {
       aviso.className = 'aviso';
+      if (aviso._abierto && typeof aviso.hidePopover === 'function') {
+        aviso.hidePopover();
+        aviso._abierto = false;
+      }
     }, 3500);
   }
 
