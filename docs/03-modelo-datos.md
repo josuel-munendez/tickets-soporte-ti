@@ -62,6 +62,8 @@ erDiagram
     }
 ```
 
+![Diagrama entidad-relación del modelo de datos](diagrams/img/modelo-datos.png)
+
 ## 2. Diccionario de datos
 
 ### 2.1 `categorias` — catálogo de clasificación

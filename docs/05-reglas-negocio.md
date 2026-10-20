@@ -24,6 +24,8 @@ sequenceDiagram
     S->>D: COMMIT
 ```
 
+![Flujo del consecutivo seguro (RN-01)](diagrams/img/secuencia-consecutivo.png)
+
 - `tickets.numero` es `UNIQUE`: **segunda barrera** si algo fallara en el contador.
 - Si la creación falla (p. ej. `TECNICO_AL_TOPE`), el `ROLLBACK` **no** consume el consecutivo.
 
