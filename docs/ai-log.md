@@ -672,3 +672,33 @@ página o reasignando. La prueba prohíbe las recargas (§7).
 servido; la API key se sigue inyectando; escenario del usuario reproducido de punta a punta
 (409 al tope → cerrar → cupo libre → 201); PHPUnit 38 pruebas / 65 aserciones OK;
 `scripts/guards.sh` → TODO OK.
+
+## 2026-10-20 — Los avisos de error quedaban debajo de los modales
+
+**Qué se pidió:** que las alertas de error se vean por encima de los modales de "Nuevo ticket"
+y de detalle/edición.
+
+**Diagnóstico:** no era un problema de `z-index`. Los modales son `<dialog>` abiertos con
+`showModal()`, y eso los coloca en el **top layer** del navegador, una capa que se pinta por
+encima de *cualquier* valor de `z-index`. El contenedor `#aviso` vivía fuera de esa capa con
+`z-index: 50`, así que quedaba siempre detrás del modal.
+
+**Corrección:**
+- `public/app.html`: `#aviso` ahora es `popover="manual"`, de modo que puede entrar al top layer.
+- `public/assets/js/ui.js`: `avisar()` hace `showPopover()` en cada mensaje. Como el top layer es
+  una pila, volver a mostrar el popover lo reinserta al final y lo deja visible sobre el modal que
+  esté abierto. Se usa una bandera propia (`_abierto`) para no llamar `showPopover()`/`hidePopover()`
+  en estado inválido, y se envuelve en `try/catch` para navegadores sin soporte.
+- `public/assets/css/estilos.css`: se resetean los estilos que el navegador aplica a un popover
+  (`inset: 0`, `margin: auto`, borde) y se deja `pointer-events: none`, para que el aviso — ahora
+  por encima del modal — no bloquee los botones que quedan debajo.
+
+**Verificación (navegador real, Brave headless + CDP, no solo lectura de código):**
+- Con el modal de nuevo ticket abierto y solapando el aviso, el píxel del punto de solape es el
+  rojo del aviso `rgb(192,57,43)` ⇒ se pinta encima.
+- **Contraejemplo:** el mismo escenario quitando el atributo `popover` deja ese píxel en gris
+  `rgb(247,250,252)` (el modal) ⇒ reproduce el comportamiento anterior. Sirve de control: la prueba
+  mide lo que dice medir.
+- Ciclo de vida: visible al avisar, oculto a los 3.5 s, visible otra vez en el siguiente aviso y sin
+  errores en avisos consecutivos.
+- `node --check` OK, `php -l` OK, `scripts/guards.sh` → TODO OK.
