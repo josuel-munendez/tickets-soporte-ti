@@ -112,6 +112,8 @@ flowchart TB
     sTicket -.-> exc
 ```
 
+![Diagrama de componentes (C4 Nivel 3, lado servidor)](diagrams/img/componentes.png)
+
 ### Reglas de dependencia (AGENTS.md §3)
 
 - **Controller:** delgado. Cero SQL, cero lógica de negocio; traduce Request → Service → Response.
@@ -146,6 +148,8 @@ sequenceDiagram
     S-->>C: detalle del ticket
     C-->>N: 201 Created (JSON + SLA)
 ```
+
+![Flujo de una petición (POST /api/tickets)](diagrams/img/secuencia-peticion.png)
 
 ## 5. Decisiones de arquitectura
 

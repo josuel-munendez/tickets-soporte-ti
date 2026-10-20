@@ -1,0 +1,50 @@
+# Diagrama de componentes (C4 Nivel 3, lado servidor) — copia para Mermaid Live / render.
+# Fuente: docs/02-arquitectura.md §3
+flowchart TB
+    subgraph http["Http"]
+        router["Router"]
+        request["Request"]
+        response["Response"]
+        apikey["ApiKeyMiddleware"]
+    end
+
+    subgraph ctrl["Controllers (delgados)"]
+        cTicket["TicketController"]
+        cUsuario["UsuarioController"]
+        cTecnico["TecnicoController"]
+        cCategoria["CategoriaController"]
+    end
+
+    subgraph svc["Services (negocio, sin SQL ni HTTP)"]
+        sTicket["TicketService"]
+        sUsuario["UsuarioService"]
+        sTecnico["TecnicoService"]
+        sCategoria["CategoriaService"]
+    end
+
+    subgraph repo["Repositories (único lugar con SQL)"]
+        rTicket["TicketRepository"]
+        rUsuario["UsuarioRepository"]
+        rTecnico["TecnicoRepository"]
+        rCategoria["CategoriaRepository"]
+    end
+
+    subgraph dom["Domain (puro)"]
+        sla["SlaCalculator"]
+        estado["EstadoTicket"]
+        const["Constantes"]
+        csv["CsvExporter"]
+    end
+
+    support["Support<br/>Config · Database (PDO + transaction())"]
+    exc["Exceptions<br/>Api/Validacion/Conflicto/NoEncontrado"]
+
+    router --> cTicket & cUsuario & cTecnico & cCategoria
+    router --> apikey
+    cTicket --> sTicket --> rTicket
+    cUsuario --> sUsuario --> rUsuario
+    cTecnico --> sTecnico --> rTecnico
+    cCategoria --> sCategoria --> rCategoria
+    sTicket --> sla & estado & const & csv
+    sTicket --> support
+    sTicket -.-> exc

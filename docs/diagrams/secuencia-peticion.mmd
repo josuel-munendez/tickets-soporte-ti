@@ -1,0 +1,25 @@
+# Diagrama de secuencia: flujo de una petición (POST /api/tickets) — copia para Mermaid Live / render.
+# Fuente: docs/02-arquitectura.md §4
+sequenceDiagram
+    participant N as Navegador (SPA)
+    participant F as Front Controller
+    participant M as ApiKeyMiddleware
+    participant C as TicketController
+    participant S as TicketService
+    participant R as TicketRepository
+    participant D as MySQL
+
+    N->>F: POST /api/tickets (X-API-Key, JSON)
+    F->>M: valida la clave (hash_equals)
+    alt clave inválida
+        M-->>N: 401 NO_AUTORIZADO
+    end
+    M->>C: Request autenticado
+    C->>S: crear(datos)
+    S->>S: valida RN-02/03/04
+    S->>D: BEGIN · bloquear técnico · tope (RN-05)
+    S->>R: siguienteConsecutivo (RN-01)
+    S->>R: insertar ticket + historial (RN-09)
+    S->>D: COMMIT
+    S-->>C: detalle del ticket
+    C-->>N: 201 Created (JSON + SLA)
