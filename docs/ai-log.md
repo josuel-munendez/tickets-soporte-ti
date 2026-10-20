@@ -553,3 +553,39 @@ resuelven; `scripts/guards.sh` → TODO OK.
   `## Video de demostración` (con nota de duración ~11 min).
 
 **Enlace:** https://docs.google.com/videos/d/1IbyXjwKtlBSq1QF5fz1QHRZZdRgLLTSTVawSdnw8zzM/play?usp=sharing
+
+## 2026-10-20 — Diagnóstico: 500 en todos los endpoints de la API local
+
+**Qué se reportó (usuario):** todos los `GET /api/*` devolvían **500** en Docker, con el aviso
+`PHP Warning: error_log(/var/www/html/storage/logs/error_2026-10-20.log): Failed to open stream:
+Permission denied`.
+
+**Diagnóstico (agente):** se instrumentó el `catch` global para exponer la traza (temporalmente, solo
+en el contenedor) y apareció la causa real, que estaba **oculta** por el warning de permisos:
+
+```
+PDOException: SQLSTATE[HY000] [1045] Access denied for user 'soporte'@'172.18.0.3' (using password: YES)
+```
+
+Eran **dos problemas distintos**:
+
+1. **Causa del 500 — credenciales de BD desincronizadas.** El volumen `tickets_datos` se creó el
+   19-oct con una contraseña que después se cambió en `.env` (`soporte`/`12345`). MySQL solo aplica
+   `MYSQL_USUARIO`/`MYSQL_PASSWORD` al **inicializar un volumen vacío**; al recrear el contenedor con
+   la clave nueva, la BD conservó la vieja ⇒ `Access denied` ⇒ 500 en toda ruta que usa BD.
+   *Solución (autorizada por el usuario):* borrar el volumen para que MySQL se re-inicialice con el
+   `.env` actual y vuelva a aplicar `schema.sql` + `seed.sql` (25 tickets). Verificado: `/api/tickets`
+   sin key → **401**, con key → **200**.
+2. **Ruido de permisos — `storage/logs` propiedad de `root`.** El `Dockerfile` hace
+   `chown -R www-data:www-data /var/www/html`, pero cuando `storage/logs` es un **volumen montado en
+   tiempo de ejecución** el montaje pisa esos permisos. PHP no podía escribir la traza y el error real
+   quedaba invisible (solo salía el warning).
+
+**Corrección (bug latente):** se añadió al arranque, en `docker/entrypoint.sh` y
+`docker/entrypoint-allinone.sh`, un paso que crea `storage/logs` y lo deja `www-data:www-data 775`.
+Verificado: tras forzar un fallo de BD, la traza **sí** se escribe en
+`storage/logs/error_YYYY-MM-DD.log` y **cero** warnings de permiso. Endpoints finales: `/api/ping`,
+`/api/tickets`, `/api/resumen`, `/api/tecnicos`, `/api/categorias`, `/api/usuarios/U001` → 200; SPA → 200.
+
+> Nota: el archivo local `postman/postman/environments/local.environment.yaml` quedó con la API key
+> real escrita a mano (`12345`); **no se versionó** para no exponer un secreto.
