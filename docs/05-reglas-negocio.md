@@ -86,6 +86,8 @@ stateDiagram-v2
     CERRADO --> EN_CURSO : ✗ 409
 ```
 
+![Máquina de estados del ticket](diagrams/img/estados-ticket.png)
+
 - Transición inválida → **409 `TRANSICION_INVALIDA`**.
 - Estado desconocido → **422 `VALIDACION`**.
 - Cerrar exige `observacion` (solución aplicada); se guarda en `tickets.solucion`. Sin ella → **422**.

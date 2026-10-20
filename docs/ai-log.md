@@ -486,3 +486,27 @@ alto real del elemento superaba ese porcentaje, una franja quedaba asomando.
 lógica existente (`ui.js`) ya añade y quita `.aviso--visible`.
 
 **Verificación:** `scripts/guards.sh` → TODO OK.
+
+## 2026-10-19 — Diagramas renderizados a imágenes (PNG + SVG)
+
+**Qué se pidió (usuario):** pasar los diagramas (Diagram-as-Code) a **imágenes**.
+
+**Qué se hizo (agente):**
+- Se renderizaron las **4 fuentes** de `docs/diagrams/` a **PNG y SVG** en `docs/diagrams/img/`:
+  - `contexto.puml` → `contexto.png` / `contexto.svg` (PlantUML).
+  - `contenedores.mmd` → `contenedores.png` / `contenedores.svg` (Mermaid CLI).
+  - `estados-ticket.puml` → `estados-ticket.png` / `estados-ticket.svg` (PlantUML; el `.mmd`
+    equivalente se omite para no duplicar el mismo diagrama).
+- `docs/02-arquitectura.md` y `docs/05-reglas-negocio.md`: se **incrustaron las imágenes** junto a
+  los bloques Mermaid (que se siguen conservando, porque GitHub los renderiza nativo). Así los
+  diagramas se ven **también fuera de GitHub** (PDF, ZIP, editores sin Mermaid).
+- `docs/diagrams/README.md`: índice de diagramas (fuente ↔ imagen ↔ dónde se usa).
+- `scripts/render-diagramas.sh`: regenera las imágenes (PlantUML + Mermaid CLI), con detección
+  automática del navegador Chromium para Mermaid (`CHROME_BIN` para forzarlo).
+
+**Detalles técnicos:** el CLI de Mermaid no admite los comentarios `#` de las fuentes `.mmd`; el
+script los filtra en una copia temporal (las fuentes no se tocan). Se usó **Brave** (Chromium) como
+navegador headless para Puppeteer, ya que no hay Chrome/Chromium instalado.
+
+**Verificación:** `scripts/render-diagramas.sh` regenera los 6 archivos sin errores; todas las rutas
+de imagen desde los `.md` resuelven; `scripts/guards.sh` → TODO OK.
