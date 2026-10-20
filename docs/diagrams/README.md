@@ -6,6 +6,8 @@ Diagramas del proyecto en **Diagram-as-Code** (texto versionable) con sus **imá
 | --- | --- | --- | --- |
 | Contexto (C4 Nivel 1) | [`contexto.puml`](contexto.puml) | [`img/contexto.png`](img/contexto.png) · [`img/contexto.svg`](img/contexto.svg) | [`../02-arquitectura.md`](../02-arquitectura.md) |
 | Contenedores (C4 Nivel 2) | [`contenedores.mmd`](contenedores.mmd) | [`img/contenedores.png`](img/contenedores.png) · [`img/contenedores.svg`](img/contenedores.svg) | [`../02-arquitectura.md`](../02-arquitectura.md) |
+| Componentes (C4 Nivel 3) | [`componentes.mmd`](componentes.mmd) | [`img/componentes.png`](img/componentes.png) · [`img/componentes.svg`](img/componentes.svg) | [`../02-arquitectura.md`](../02-arquitectura.md) |
+| Secuencia de una petición | [`secuencia-peticion.mmd`](secuencia-peticion.mmd) | [`img/secuencia-peticion.png`](img/secuencia-peticion.png) · [`img/secuencia-peticion.svg`](img/secuencia-peticion.svg) | [`../02-arquitectura.md`](../02-arquitectura.md) |
 | Máquina de estados del ticket | [`estados-ticket.puml`](estados-ticket.puml) · [`estados-ticket.mmd`](estados-ticket.mmd) | [`img/estados-ticket.png`](img/estados-ticket.png) · [`img/estados-ticket.svg`](img/estados-ticket.svg) | [`../05-reglas-negocio.md`](../05-reglas-negocio.md) |
 
 > Las fuentes `.mmd` (Mermaid) se ven directamente en GitHub dentro de los `.md`; las imágenes
