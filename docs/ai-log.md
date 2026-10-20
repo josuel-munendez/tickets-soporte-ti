@@ -589,3 +589,23 @@ Verificado: tras forzar un fallo de BD, la traza **sí** se escribe en
 
 > Nota: el archivo local `postman/postman/environments/local.environment.yaml` quedó con la API key
 > real escrita a mano (`12345`); **no se versionó** para no exponer un secreto.
+
+## 2026-10-20 — Postman: versionar solo el environment `.example`
+
+**Qué se pidió (usuario):** que el repositorio deje de ver `postman/postman/environments/local.environment.yaml`
+y solo versione `postman/postman/environments/local.environment.yaml.example`.
+
+**Qué se hizo (agente):**
+- Se **saca del índice** `local.environment.yaml` (`git rm --cached`, sin borrarlo del disco): estaba
+  versionado con la API key real del usuario escrita a mano.
+- El `.example` se **renombró** a `local.environment.yaml.example` (antes tenía un espacio en el nombre:
+  `local.environment copy.yaml.example`) y mantiene el placeholder `tu-clave-secreta`.
+- `.gitignore`: regla precisa `postman/postman/environments/local.environment.yaml` (se eliminaron dos
+  reglas previas redundantes que además eran ambiguas).
+
+**Verificación:** `git check-ignore` confirma que el `.yaml` real se ignora y que el `.example` **no**;
+`git ls-files postman/postman/environments/` devuelve solo el `.example`; el commit del entorno tiene
+**0** ocurrencias de la clave real; `scripts/guards.sh` → TODO OK.
+
+> Incidente y recuperación: al renombrar el `.example` se sobrescribió por error el `.yaml` local
+> (untracked). Se recuperó desde el historial (`git show develop^:…`) y quedó restaurado en disco.
