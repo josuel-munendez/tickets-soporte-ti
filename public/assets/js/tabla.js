@@ -45,9 +45,14 @@ window.Tabla = (function () {
   function cargarTecnicosDelFiltro() {
     Ui.obtenerTecnicos().then(function (tecnicos) {
       var select = Utils.porId('filtro-tecnico');
+      var valorActual = select.value;
+      Utils.limpiar(select);
+      select.append(h('option', { value: '', texto: 'Todos' }));
       tecnicos.forEach(function (tecnico) {
         select.append(h('option', { value: tecnico.id, texto: tecnico.nombre }));
       });
+      // Conserva la selección del usuario si el técnico sigue existiendo.
+      select.value = valorActual;
     }).catch(function () {
       /* el filtro es secundario: si falla, la tabla sigue funcionando */
     });
@@ -88,6 +93,9 @@ window.Tabla = (function () {
       estado.totalPaginas = Math.max(1, Math.ceil(estado.total / estado.porPagina));
       render(respuesta.data);
       actualizarPaginacion();
+      // Se recarga en cada refresh para reflejar altas/cierres de tickets: así el
+      // filtro no queda con una lista desactualizada tras cambiar un estado.
+      cargarTecnicosDelFiltro();
     }).catch(function (error) {
       var cuerpo = Utils.porId('tabla-cuerpo');
       Utils.limpiar(cuerpo);
