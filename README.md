@@ -400,7 +400,7 @@ Toda la documentación vive en el repo y evoluciona con el código (AGENTS.md §
 | [`docs/05-reglas-negocio.md`](docs/05-reglas-negocio.md) | RN-01…RN-09 y máquina de estados |
 | [`docs/06-decisiones/`](docs/06-decisiones/) | ADR-001…ADR-005 |
 | [`docs/07-pruebas.md`](docs/07-pruebas.md) | Matriz de pruebas y checklist de entrega |
-| [`docs/diagrams/`](docs/diagrams/) | Fuentes Mermaid (`.mmd`) y PlantUML (`.puml`) |
+| [`docs/diagrams/`](docs/diagrams/) | Fuentes Mermaid (`.mmd`) y PlantUML (`.puml`) + imágenes renderizadas en `img/` |
 | [`docs/contexto/`](docs/contexto/) | Enunciado de la prueba y descripción del cargo (material de referencia) |
 | [`docs/evidencias/`](docs/evidencias/) | Ejemplo de export CSV |
 | [`docs/prompts-ia/`](docs/prompts-ia/) · [`docs/herramientas-ia/`](docs/herramientas-ia/) | Prompts y configuración de las herramientas de IA |

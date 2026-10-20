@@ -1,7 +1,8 @@
 # 02 — Arquitectura
 
 > **Metodología:** modelo C4 (contexto → contenedores → componentes). Diagramas en Mermaid
-> (texto versionable). Fuente en [`diagrams/`](diagrams/).
+> (texto versionable). Fuente en [`diagrams/`](diagrams/) e imágenes renderizadas en
+> [`diagrams/img/`](diagrams/img/) (PNG + SVG).
 
 ## 1. Nivel 1 — Contexto
 
@@ -16,6 +17,8 @@ flowchart LR
     cliente -->|"HTTPS · JSON + X-API-Key"| api
     api -->|"PDO · SQL preparado"| db
 ```
+
+![Diagrama de contexto (C4 Nivel 1)](diagrams/img/contexto.png)
 
 El sistema es autónomo: no depende de servicios externos. Los usuarios interactúan por la SPA;
 otros consumidores usan la API directamente.
@@ -45,6 +48,8 @@ flowchart TB
     services --> domain
     front -.->|"inyecta API key"| spa
 ```
+
+![Diagrama de contenedores (C4 Nivel 2)](diagrams/img/contenedores.png)
 
 | Contenedor | Responsabilidad | Tecnología |
 | --- | --- | --- |
