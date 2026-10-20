@@ -510,3 +510,20 @@ navegador headless para Puppeteer, ya que no hay Chrome/Chromium instalado.
 
 **Verificación:** `scripts/render-diagramas.sh` regenera los 6 archivos sin errores; todas las rutas
 de imagen desde los `.md` resuelven; `scripts/guards.sh` → TODO OK.
+
+## 2026-10-19 — Imágenes para los diagramas de componentes y secuencia
+
+**Qué se pidió (usuario):** generar también imagen para el **diagrama de componentes (C4 Nivel 3)** y
+el **de secuencia** que estaban solo como Mermaid inline en `docs/02-arquitectura.md`.
+
+**Qué se hizo (agente):**
+- Nuevas fuentes en `docs/diagrams/`: `componentes.mmd` y `secuencia-peticion.mmd` (mismo contenido
+  que los bloques inline, con la cabecera de comentario `#`).
+- Renderizadas a **PNG + SVG** (`-s 2`) en `docs/diagrams/img/` con
+  `scripts/render-diagramas.sh` (Mermaid CLI + Brave como navegador headless).
+- `docs/02-arquitectura.md`: incrustadas las imágenes junto a los bloques Mermaid (§3 Componentes y
+  §4 Flujo de una petición).
+- `docs/diagrams/README.md`: añadidas ambas filas al índice (fuente ↔ imagen ↔ dónde se usa).
+
+**Verificación:** las 5 referencias de imagen desde los `.md` resuelven; las 6 fuentes del índice
+existen; `scripts/guards.sh` → TODO OK.
