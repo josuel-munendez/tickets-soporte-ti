@@ -638,3 +638,37 @@ pendiente hasta recargar la página; la prueba exige que la SPA **no** recargue.
 **Verificación:** sintaxis OK (`node --check`); simulación con DOM mínimo → el filtro queda con
 `Todos + 2 técnicos` sin duplicados y mantiene la selección; flujo real contra la API → la carga del
 técnico baja y `/api/tecnicos` y `/api/resumen` coinciden; `scripts/guards.sh` → TODO OK.
+
+## 2026-10-20 — Bug: el navegador servía JavaScript viejo (caché sin `Cache-Control`)
+
+**Qué se reportó (usuario):** al cerrar un ticket (`EN CURSO → CERRADO`) la carga del técnico no
+bajaba: un técnico al tope seguía sin admitir tickets nuevos, y solo se "arreglaba" recargando la
+página o reasignando. La prueba prohíbe las recargas (§7).
+
+**Diagnóstico (agente):**
+- Se reprodujo el escenario completo contra la API: llevar a un técnico a 5/5 → `POST` con ese
+  técnico da **409 `TECNICO_AL_TOPE`** (correcto) → cerrar uno de sus tickets (`PATCH … 200`) →
+  `/api/tecnicos` y `/api/resumen` bajan a **4/5 `disponible: true`** y el siguiente `POST` da
+  **201**. La BD confirmó el mismo conteo. **El backend siempre estuvo correcto.**
+- En la SPA, los dos caminos ya eran **idénticos** desde `v1.3.7`: `aplicarEstado()` y
+  `aplicarReasignacion()` llaman ambos a `invalidarCatalogos()` → `renderDetalle()` →
+  `refrescarLista()` (tabla + tablero + filtro). Si el usuario veía que reasignar sí actualizaba y
+  cerrar no, los caminos (iguales) no podían comportarse distinto ⇒ el navegador estaba ejecutando
+  una **copia antigua** de `ui.js`.
+- **Causa raíz:** Apache servía los assets con `ETag`/`Last-Modified` pero **sin `Cache-Control`**,
+  así que el navegador aplicaba *caché heurística* y reutilizaba el JS sin revalidar. Los `<script>`
+  de `app.html` no llevaban parámetro de versión, por lo que un `ui.js` cacheado antes de `v1.3.7`
+  se seguía usando tras el despliegue. De ahí el comportamiento intermitente.
+
+**Corrección:**
+- `public/index.php`: función `conAssetsVersionados()` que reescribe cada `assets/...` del HTML
+  añadiendo `?v=<filemtime>`. Al cambiar un asset cambia su mtime ⇒ cambia la URL ⇒ el navegador
+  está obligado a descargarlo. No afecta a la inyección de la API key.
+- `public/.htaccess`: `Cache-Control: no-cache, must-revalidate` para `.js/.css/.html` como segunda
+  barrera, de modo que el navegador revalide siempre.
+
+**Verificación:** `php -l` OK; HTML servido con `?v=` en los 6 assets; cabecera
+`Cache-Control: no-cache, must-revalidate` presente; la versión sigue el mtime real del archivo
+servido; la API key se sigue inyectando; escenario del usuario reproducido de punta a punta
+(409 al tope → cerrar → cupo libre → 201); PHPUnit 38 pruebas / 65 aserciones OK;
+`scripts/guards.sh` → TODO OK.

@@ -87,6 +87,29 @@ $registrarError = static function (Throwable $error) use ($raiz): void {
     }
 };
 
+/**
+ * Cache-busting de assets (§7): agrega ?v=<mtime> a cada assets/... referenciado
+ * en el HTML. Sin esto, el navegador puede reutilizar un ui.js viejo (Apache no
+ * envía Cache-Control) y la SPA se queda con lógica desactualizada hasta que el
+ * usuario hace una recarga forzada. Al cambiar el archivo cambia su mtime y la
+ * URL, así que la descarga es inevitable.
+ */
+function conAssetsVersionados(string $html, string $directorioPublico): string
+{
+    return (string) preg_replace_callback(
+        '#(?:src|href)="(assets/[^"?]+)"#',
+        static function (array $coincidencia) use ($directorioPublico): string {
+            $rutaRelativa = $coincidencia[1];
+            $rutaFisica = $directorioPublico . '/' . $rutaRelativa;
+            $version = is_file($rutaFisica) ? (string) filemtime($rutaFisica) : '0';
+            $atributo = str_starts_with($coincidencia[0], 'src') ? 'src' : 'href';
+
+            return $atributo . '="' . $rutaRelativa . '?v=' . $version . '"';
+        },
+        $html,
+    );
+}
+
 try {
     Config::cargar($raiz . '/config/config.php');
 
@@ -96,8 +119,9 @@ try {
     // (cli-server) y con Apache (mod_rewrite envía todo a este Front Controller).
     $rutaSolicitada = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
     if ($rutaSolicitada === '/' || $rutaSolicitada === '/app.html') {
-        $plantilla = file_get_contents(__DIR__ . '/app.html');
-        echo str_replace('__CLAVE_API__', htmlspecialchars(Config::apiKey(), ENT_QUOTES), (string) $plantilla);
+        $plantilla = (string) file_get_contents(__DIR__ . '/app.html');
+        $plantilla = str_replace('__CLAVE_API__', htmlspecialchars(Config::apiKey(), ENT_QUOTES), $plantilla);
+        echo conAssetsVersionados($plantilla, __DIR__);
         return;
     }
 

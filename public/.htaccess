@@ -15,4 +15,12 @@
 # Ninguna respuesta debe olvidar el tipo de contenido declarado (§4.7).
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
+
+    # Assets (§7): deben revalidarse siempre. Sin Cache-Control el navegador
+    # aplica caché heurística y puede quedarse con un ui.js viejo, dejando la SPA
+    # sin refrescar la carga del técnico hasta una recarga manual. El Front
+    # Controller además añade ?v=<mtime> a cada asset del HTML.
+    <FilesMatch "\.(js|css|html)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
 </IfModule>
