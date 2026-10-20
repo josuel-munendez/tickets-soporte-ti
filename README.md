@@ -8,7 +8,7 @@
 | Fecha de entrega | Domingo 18 de Octubre 2026 |
 | Repositorio | [https://github.com/josuel-munendez/tickets-soporte-ti](https://github.com/josuel-munendez/tickets-soporte-ti) |
 | Demo en línea | [https://tickets-soporte-ti.onrender.com](https://tickets-soporte-ti.onrender.com) |
-| Video de demostración | _Pendiente: pegar aquí el enlace del video (YouTube no listado / Drive)_ |
+| Video de demostración | [Ver video (Google Drive)](https://docs.google.com/videos/d/1IbyXjwKtlBSq1QF5fz1QHRZZdRgLLTSTVawSdnw8zzM/play?usp=sharing) |
 
 ## Demo en línea
 
@@ -23,9 +23,9 @@ Usa la API key indicada en la sección de configuración para operar la API (la 
 
 ## Video de demostración
 
-> ⏳ **Pendiente de grabar.** El guion (11 min) cubre: flujo completo (registro → en curso → cierre), filtros, SLA, errores de validación y transición inválida, recorrido por el código y dos decisiones técnicas.
+> 📹 **Duración:** ~11 min. Cubre: flujo completo (registro → en curso → cierre), filtros, SLA, errores de validación y transición inválida, recorrido por el código y dos decisiones técnicas.
 
-**Enlace del video:** _pegar aquí la URL cuando se publique (YouTube no listado o Drive)_.
+**Enlace del video:** [https://docs.google.com/videos/d/1IbyXjwKtlBSq1QF5fz1QHRZZdRgLLTSTVawSdnw8zzM/play?usp=sharing](https://docs.google.com/videos/d/1IbyXjwKtlBSq1QF5fz1QHRZZdRgLLTSTVawSdnw8zzM/play?usp=sharing)
 
 ## Contexto
 
