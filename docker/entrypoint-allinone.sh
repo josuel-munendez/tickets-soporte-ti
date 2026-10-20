@@ -87,6 +87,15 @@ return [
 PHP
 chown www-data:www-data "$CONFIG_FILE"
 
+# --- 3b. Asegurar el directorio de logs interno ------------------------------
+# El Front Controller escribe la traza en storage/logs/ (§4.4). El Dockerfile hace
+# chown -R www-data, pero si storage/logs es un volumen montado, el montaje pisa
+# esos permisos ⇒ PHP no puede escribir y se pierde el error real. Se corrige aquí.
+LOG_DIR="/var/www/html/storage/logs"
+mkdir -p "$LOG_DIR"
+chown -R www-data:www-data /var/www/html/storage
+chmod 775 "$LOG_DIR"
+
 # --- 4. Adaptar Apache al puerto que exige la plataforma ($PORT) -------------
 if [ -n "${PORT:-}" ] && [ "${PORT}" != "80" ]; then
     sed -ri "s/^Listen 80$/Listen ${PORT}/" /etc/apache2/ports.conf
