@@ -609,3 +609,32 @@ y solo versione `postman/postman/environments/local.environment.yaml.example`.
 
 > Incidente y recuperación: al renombrar el `.example` se sobrescribió por error el `.yaml` local
 > (untracked). Se recuperó desde el historial (`git show develop^:…`) y quedó restaurado en disco.
+
+## 2026-10-20 — Bug: la carga del técnico no se refrescaba tras cerrar un ticket
+
+**Qué se reportó (usuario):** al cerrar un ticket, el técnico seguía mostrando la misma carga
+pendiente hasta recargar la página; la prueba exige que la SPA **no** recargue.
+
+**Diagnóstico (agente):**
+- La API era correcta: al cerrar, `/api/tecnicos` y `/api/resumen` bajan `carga_activa`. Se comprobó
+  el flujo `ABIERTO → EN CURSO → CERRADO` (200 en ambos PATCH) y la carga bajó 4 → 3 en **ambos**
+  endpoints. También se confirmó que `ABIERTO → CERRADO` devuelve **409 `TRANSICION_INVALIDA`**
+  (correcto por RN-06) y que la UI **no** ofrece ese salto: el select solo muestra `SIGUIENTE[estado]`.
+- **Causa real (dos defectos en la SPA):**
+  1. `Ui.aplicarEstado()` refrescaba el tablero y la tabla, pero **no** invalidaba el catálogo de
+     técnicos cacheado (`cacheTecnicos`). Al crear (`form.js`) y al reasignar (`ui.js`) sí se
+     invalidaba; al **cambiar estado**, no. Resultado: el select de técnicos (formulario, detalle y
+     filtro) seguía mostrando la carga anterior mientras el tablero ya mostraba la nueva.
+  2. `Tabla.cargarTecnicosDelFiltro()` solo se ejecutaba al iniciar (`tabla.js`) y **acumulaba**
+     opciones si se volvía a llamar (sin `limpiar()`), por lo que el filtro nunca reflejaba cambios.
+
+**Corrección:**
+- `public/assets/js/ui.js`: `aplicarEstado()` ahora llama a `invalidarCatalogos()` antes de
+  `refrescarLista()`, igual que ya hacían crear y reasignar.
+- `public/assets/js/tabla.js`: `cargar()` vuelve a poblar el filtro en cada refresh y
+  `cargarTecnicosDelFiltro()` limpia antes de reconstruir (sin duplicar) y **conserva la selección**
+  del usuario.
+
+**Verificación:** sintaxis OK (`node --check`); simulación con DOM mínimo → el filtro queda con
+`Todos + 2 técnicos` sin duplicados y mantiene la selección; flujo real contra la API → la carga del
+técnico baja y `/api/tecnicos` y `/api/resumen` coinciden; `scripts/guards.sh` → TODO OK.

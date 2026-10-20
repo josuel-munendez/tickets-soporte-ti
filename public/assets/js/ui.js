@@ -266,6 +266,10 @@ window.Ui = (function () {
     Api.cambiarEstado(ticketActual.numero, { estado: estado, observacion: observacion })
       .then(function (ticket) {
         avisar('Estado actualizado a ' + ticket.estado + '.', 'ok');
+        // Al cerrar un ticket se libera cupo del técnico: hay que descartar el
+        // catálogo cacheado para que los selects (formulario, detalle y filtro)
+        // muestren la carga real, no la anterior (RN-05).
+        invalidarCatalogos();
         renderDetalle(ticket);
         refrescarLista();
       })
