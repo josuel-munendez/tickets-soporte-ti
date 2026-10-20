@@ -2,8 +2,5 @@ name: Local
 values:
   - key: base_url
     value: 'http://localhost:8080/api'
-    enabled: true
   - key: api_key
-    value: tu-clave-secreta
-    enabled: true
-    type: secret
+    value: 'tu-clave-secreta'
