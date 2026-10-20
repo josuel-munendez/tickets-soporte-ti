@@ -1,0 +1,15 @@
+# Diagrama de secuencia: consecutivo seguro (RN-01) — copia para Mermaid Live / render.
+# Fuente: docs/05-reglas-negocio.md §RN-01 (orden de bloqueos: ticket -> tecnico -> consecutivo)
+sequenceDiagram
+    participant S as TicketService
+    participant D as MySQL
+    S->>D: BEGIN
+    S->>D: SELECT ... técnico FOR UPDATE
+    alt técnico al tope (RN-05)
+        S->>D: ROLLBACK (no se quema el consecutivo)
+    end
+    S->>D: INSERT IGNORE consecutivos_ticket (anio)
+    S->>D: SELECT ultimo FOR UPDATE
+    S->>D: UPDATE ultimo = ultimo + 1
+    S->>D: INSERT ticket + INSERT historial
+    S->>D: COMMIT

@@ -527,3 +527,18 @@ el **de secuencia** que estaban solo como Mermaid inline en `docs/02-arquitectur
 
 **Verificación:** las 5 referencias de imagen desde los `.md` resuelven; las 6 fuentes del índice
 existen; `scripts/guards.sh` → TODO OK.
+
+## 2026-10-19 — Imágenes para los diagramas ER y del consecutivo (RN-01)
+
+**Qué se pidió (usuario):** completar las imágenes de los diagramas Mermaid que aún no las tenían.
+
+**Qué se hizo (agente):**
+- Nuevas fuentes en `docs/diagrams/`: `modelo-datos.mmd` (ER) y `secuencia-consecutivo.mmd` (RN-01).
+- Renderizadas a **PNG + SVG** en `docs/diagrams/img/` con `scripts/render-diagramas.sh`.
+- `docs/03-modelo-datos.md` (§1) y `docs/05-reglas-negocio.md` (RN-01): imágenes incrustadas junto a
+  los bloques Mermaid.
+- `docs/diagrams/README.md`: añadidas ambas filas al índice.
+
+**Cobertura:** los **7 bloques Mermaid** de la documentación ya tienen su imagen (PNG + SVG); 7
+variantes de diagrama en total. Verificado: todas las referencias `diagrams/img/*.png` desde los `.md`
+resuelven; `scripts/guards.sh` → TODO OK.
